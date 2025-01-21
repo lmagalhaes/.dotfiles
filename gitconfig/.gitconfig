@@ -1,0 +1,14 @@
+[user]
+    name = Leandro Magalhaes
+    email = le.fatecpd@gmail.com
+
+[init]
+    defaultBranch = main
+
+[includeIf "gitdir:~/workspace/ordermentum/"]
+    path = ~/.dotfiles/gitconfig/ordermentum
+
+[includeIf "gitdir:~/workspace/foodbomb/"]
+    path = ~/.dotfiles/gitconfig/foodbomb
+[rerere]
+	enabled = true
