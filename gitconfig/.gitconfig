@@ -10,5 +10,6 @@
 
 [includeIf "gitdir:~/workspace/foodbomb/"]
     path = ~/.dotfiles/gitconfig/foodbomb
+
 [rerere]
 	enabled = true
