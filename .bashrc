@@ -7,6 +7,7 @@ PATH="$N_PREFIX/:~/workspace/lmagalhaes/bin/ordermentum/:~/bin/:$PATH"
 eval "$(/opt/homebrew/bin/brew shellenv)"
 
 export PATH="$HOMEBREW_PREFIX/opt/libpq/bin:$PATH"
+export HOMEBREW_BUNDLE_FILE=$HOME/.dotfiles/Brewfile
 # Brew bash completion
 [[ -r "$HOMEBREW_PREFIX/etc/profile.d/bash_completion.sh" ]] && . "$HOMEBREW_PREFIX/etc/profile.d/bash_completion.sh"
 
