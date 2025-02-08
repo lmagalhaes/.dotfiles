@@ -57,7 +57,6 @@ PS1+=":$COLOR_LIGHT_BLUE\w"
 PS1+="$COLOR_YELLOW "'$(__git_ps1 "[ %s ]")'
 PS1+="$COLOR_NC\$ "
 
-export NPM_TOKEN=8fa3344-9185-496d-96e6-051000c132d0
 export BUILDKIT_PROGRESS=plain
 
 
