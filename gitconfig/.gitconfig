@@ -5,11 +5,8 @@
 [init]
     defaultBranch = main
 
-[includeIf "gitdir:~/workspace/ordermentum/"]
-    path = ~/.dotfiles/gitconfig/ordermentum
-
-[includeIf "gitdir:~/workspace/foodbomb/"]
-    path = ~/.dotfiles/gitconfig/foodbomb
+[includeIf "gitdir:~/workspace/workyard/"]
+    path = ~/.dotfiles/gitconfig/workyard
 
 [rerere]
 	enabled = true
