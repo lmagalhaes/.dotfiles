@@ -2,6 +2,8 @@
     name = Leandro Magalhaes
     email = le.fatecpd@gmail.com
 
+[core]
+
 [init]
     defaultBranch = main
 
@@ -10,3 +12,28 @@
 
 [rerere]
 	enabled = true
+
+[pull]
+	rebase = true
+
+[rebase]
+	autoStash = true
+
+[push]
+	default = simple
+	followTags = true
+
+[fetch]
+	prune = true
+
+[grep]
+	lineNumber = true
+
+[help]
+	autoCorrect = 1
+
+[color]
+	ui = auto
+
+[merge]
+	defaultToUpstream = true
