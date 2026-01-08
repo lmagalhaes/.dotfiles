@@ -1,0 +1,8 @@
+#!/usr/bin/env bash
+
+alias sbashrc='source ~/.bashrc'
+
+alias xphpunit='XDEBUG_SESSION=1 phpunit'
+
+alias wy='cd $HOME/workspace/workyard/'
+alias lm='cd $HOME/workspace/lmagalhaes/'
