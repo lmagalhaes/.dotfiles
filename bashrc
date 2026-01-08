@@ -2,17 +2,24 @@
 
 export EDITOR=vim
 export LC_ALL=en_AU.UTF-8
-DOTFILES_PATH="$HOME/.dotfiles"
-
-if [ -d "$DOTFILES_PATH" ];
-then
-    source "$DOTFILES_PATH/macos/.env"
-fi;
-
-PATH="$HOME/workspace/lmagalhaes/bin/ordermentum/:$HOME/bin/:$PATH"
 
 # Adding brew to path
 eval "$(/opt/homebrew/bin/brew shellenv)"
+
+DOTFILES_PATH="$HOME/.dotfiles"
+if [ -d "$DOTFILES_PATH" ];
+then
+    source "$DOTFILES_PATH/macos/.env"
+    if [ -f "$DOTFILES_PATH/secrets.env" ];
+    then
+	source "$DOTFILES_PATH/secrets.env"
+    fi;
+fi;
+
+PATH="$HOME/bin:$HOME/workspace/lmagalhaes/bin:$PATH"
+
+eval $(keychain -q --timeout 480 --eval ~/.ssh/id_ed25519 ~/.ssh/id_rsa)
+eval "$(task --completion bash)"
 
 export NVM_DIR="$HOME/.nvm"
   # This loads nvm
@@ -43,11 +50,11 @@ export COLOR_CYAN='\[\e[0;36m\]'
 export COLOR_LIGHT_CYAN='\[\e[1;36m\]'
 export COLOR_RED='\[\e[0;31m\]'
 export COLOR_LIGHT_RED='\[\e[1;31m\]'
-export COLOR_PURPLE='\[\e[0;35m'
+export COLOR_PURPLE='\[\e[0;35m\]'
 export COLOR_LIGHT_PURPLE='\[\e[1;35m\]'
 export COLOR_BROWN='\[\e[0;33m\]'
 export COLOR_YELLOW='\[\e[1;33m\]'
-export COLOR_GRAY='\[\e[0;30m]\'
+export COLOR_GRAY='\[\e[0;30m\]'
 export COLOR_LIGHT_GRAY='\[\e[0;37m\]'
 
 if [[ -n $(command -v aws) ]];
@@ -55,9 +62,10 @@ then
     complete -C '/opt/homebrew/bin/aws_completer' aws
 fi;
 
+source $HOME/.dotfiles/aliases
+
 if [ -d "$HOME/.bash/" ];
 then
-    source $HOME/.bash/aliases.sh
     source $HOME/.bash/keys.sh
     source $HOME/.bash/aws-sso-util-complete-create.sh
     source $HOME/.bash/kubectl-completion.bash
