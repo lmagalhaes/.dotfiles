@@ -1,0 +1,22 @@
+# MacOS
+.DS_Store
+
+# IDEs
+.idea
+.vscode
+
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Node
+node_modules
+npm-debug.log
+
+# Environments
+.env
+.venv
+.env.bak
+.venv.bak
+
