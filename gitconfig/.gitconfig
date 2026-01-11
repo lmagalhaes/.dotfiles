@@ -1,5 +1,5 @@
 [user]
-    name = Leandro Magalhaes
+    name = Leandro Magalhães
     email = le.fatecpd@gmail.com
 
 [core]
@@ -11,29 +11,34 @@
     path = ~/.dotfiles/gitconfig/workyard
 
 [rerere]
-	enabled = true
+    enabled = true
 
 [pull]
-	rebase = true
+    rebase = true
 
 [rebase]
-	autoStash = true
+    autoStash = true
 
 [push]
-	default = simple
-	followTags = true
+    default = simple
+    followTags = true
 
 [fetch]
-	prune = true
+    prune = true
 
 [grep]
-	lineNumber = true
+    lineNumber = true
 
 [help]
-	autoCorrect = 1
+    autoCorrect = 1
 
 [color]
-	ui = auto
+    ui = auto
 
 [merge]
-	defaultToUpstream = true
+    defaultToUpstream = true
+[filter "lfs"]
+    smudge = git-lfs smudge -- %f
+    process = git-lfs filter-process
+    required = true
+    clean = git-lfs clean -- %f
