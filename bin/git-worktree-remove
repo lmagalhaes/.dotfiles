@@ -1,0 +1,57 @@
+#!/usr/bin/env bash
+# git-worktree-remove - Remove a worktree by branch name or path
+#
+# Usage: git worktree-remove <branch-name-or-path> [options]
+
+# Source common functions and variables
+source "$(dirname "$0")/git-worktree-common"
+
+# Show help
+if [ $# -eq 0 ] || [ "$1" = "-h" ] || [ "$1" = "--help" ]; then
+    echo "Usage: git worktree-remove <branch-name-or-path> [options]"
+    echo ""
+    echo "Remove a git worktree by branch name or path."
+    echo ""
+    echo "Arguments:"
+    echo "  branch-name    Name of the worktree branch (e.g., WORK-123-feature)"
+    echo "  path           Full path to worktree (e.g., .worktrees/WORK-123-feature)"
+    echo ""
+    echo "Options:"
+    echo "  --force        Force removal even with uncommitted changes"
+    echo ""
+    echo "Examples:"
+    echo "  git worktree-remove WORK-123-feature"
+    echo "  git worktree-remove .worktrees/WORK-123-feature"
+    echo "  git worktree-remove WORK-123-feature --force"
+    exit 0
+fi
+
+# Check if in a git repository
+check_git_repo
+
+REPO_ROOT=$(get_repo_root)
+INPUT="$1"
+shift  # Remove first argument, keep remaining args (like --force)
+
+# Determine worktree path
+if [[ "$INPUT" == .worktrees/* ]]; then
+    # Already a path
+    WORKTREE_PATH="$REPO_ROOT/$INPUT"
+elif [[ "$INPUT" == /* ]]; then
+    # Absolute path
+    WORKTREE_PATH="$INPUT"
+else
+    # Branch name - convert to path
+    WORKTREE_PATH="$REPO_ROOT/.worktrees/$INPUT"
+fi
+
+# Check if worktree exists
+if [ ! -d "$WORKTREE_PATH" ]; then
+    error "Worktree not found: $WORKTREE_PATH"
+fi
+
+# Remove the worktree
+info "Removing worktree: $(basename "$WORKTREE_PATH")"
+git worktree remove "$WORKTREE_PATH" "$@"
+
+success "Worktree removed successfully"

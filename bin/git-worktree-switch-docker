@@ -1,0 +1,138 @@
+#!/usr/bin/env bash
+# git-worktree-switch-docker - Switch Docker mount to different worktree
+#
+# Usage: git worktree-switch-docker <branch-name>
+#        git worktree-switch-docker main
+
+set -euo pipefail
+
+# Colors
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+BLUE='\033[0;34m'
+NC='\033[0m'
+
+error() {
+    echo -e "${RED}Error: $1${NC}" >&2
+    exit 1
+}
+
+info() {
+    echo -e "${BLUE}→ $1${NC}"
+}
+
+success() {
+    echo -e "${GREEN}✓ $1${NC}"
+}
+
+# Docker directory (hardcoded for crew-api, could be made generic later)
+DOCKER_DIR=~/workspace/workyard/dev-env/workyard-api
+ENV_FILE="$DOCKER_DIR/.env"
+
+# Show help
+if [ $# -eq 0 ] || [ "$1" = "-h" ] || [ "$1" = "--help" ]; then
+    echo "Usage: git worktree-switch-docker <branch-name>"
+    echo "       git worktree-switch-docker main"
+    echo "       git worktree-switch-docker status"
+    echo ""
+    echo "Switch Docker containers to mount a different git worktree."
+    echo ""
+    echo "Examples:"
+    echo "  git worktree-switch-docker WORK-123-feature    # Switch to worktree"
+    echo "  git worktree-switch-docker main                # Switch back to main"
+    echo "  git worktree-switch-docker status              # Show current selection"
+    echo ""
+    echo "The selection is saved to .env and persists across sessions."
+    exit 0
+fi
+
+# Show status
+if [ "$1" = "status" ]; then
+    if [ -f "$ENV_FILE" ] && grep -q "^CREW_API_MOUNT=" "$ENV_FILE"; then
+        CURRENT=$(grep "^CREW_API_MOUNT=" "$ENV_FILE" | cut -d'=' -f2)
+        echo "Docker currently pointing to: $CURRENT"
+        if [[ "$CURRENT" == *".worktrees/"* ]]; then
+            BRANCH=$(basename "$CURRENT")
+            echo "Active worktree: $BRANCH"
+        else
+            echo "Active branch: main (default)"
+        fi
+    else
+        echo "Docker using default mount: ./crew-api (main)"
+    fi
+    echo ""
+    echo "Configuration file: $ENV_FILE"
+    exit 0
+fi
+
+BRANCH=$1
+
+# Get repository root
+if ! git rev-parse --git-dir &>/dev/null; then
+    error "Not in a git repository"
+fi
+
+REPO_ROOT=$(dirname "$(git rev-parse --git-common-dir)")
+
+# Determine mount path
+if [ "$BRANCH" = "main" ] || [ "$BRANCH" = "." ]; then
+    # Use default (unset variable to use docker-compose default)
+    MOUNT_PATH=""
+    info "Switching to main branch (default mount)"
+else
+    # Check if worktree exists
+    WORKTREE_PATH="$REPO_ROOT/.worktrees/$BRANCH"
+    if [ ! -d "$WORKTREE_PATH" ]; then
+        error "Worktree not found: $WORKTREE_PATH"
+    fi
+
+    # Use relative path from docker directory
+    MOUNT_PATH="./crew-api/.worktrees/$BRANCH"
+    info "Switching to worktree: $BRANCH"
+fi
+
+# Write selection to .env file (persists across sessions)
+cd "$DOCKER_DIR"
+
+if [ -z "$MOUNT_PATH" ]; then
+    # Main branch - remove .env entry or set to default
+    if [ -f "$ENV_FILE" ]; then
+        # Remove CREW_API_MOUNT line if it exists
+        grep -v "^CREW_API_MOUNT=" "$ENV_FILE" > "$ENV_FILE.tmp" 2>/dev/null || true
+        mv "$ENV_FILE.tmp" "$ENV_FILE"
+        # Remove .env if now empty
+        if [ ! -s "$ENV_FILE" ]; then
+            rm "$ENV_FILE"
+        fi
+    fi
+    info "Using default mount: ./crew-api"
+else
+    # Worktree - write to .env file
+    if [ -f "$ENV_FILE" ]; then
+        # Update existing line or add new one
+        if grep -q "^CREW_API_MOUNT=" "$ENV_FILE"; then
+            sed -i.bak "s|^CREW_API_MOUNT=.*|CREW_API_MOUNT=$MOUNT_PATH|" "$ENV_FILE"
+            rm -f "$ENV_FILE.bak"
+        else
+            echo "CREW_API_MOUNT=$MOUNT_PATH" >> "$ENV_FILE"
+        fi
+    else
+        # Create new .env file
+        echo "CREW_API_MOUNT=$MOUNT_PATH" > "$ENV_FILE"
+    fi
+    info "Mount path: $MOUNT_PATH (saved to .env)"
+fi
+
+# Restart containers with new mount
+info "Restarting containers..."
+docker compose restart nginx workyard-api workyard-api-queue
+
+echo ""
+success "Docker switched successfully!"
+echo ""
+echo "Active branch: $BRANCH"
+echo "URL: https://api.workyard.test"
+echo ""
+
+# Show which containers were restarted
+docker compose ps nginx workyard-api workyard-api-queue

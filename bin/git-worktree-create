@@ -1,0 +1,105 @@
+#!/usr/bin/env bash
+# git-worktree-create - Create a new git worktree
+#
+# Usage: git worktree-create <branch-name> [base-branch]
+#        git worktree-create WORK-123-oauth-integration
+#        git worktree-create WORK-123-oauth-integration main
+
+# Source common functions and variables
+source "$(dirname "$0")/git-worktree-common"
+
+# Show help
+if [ $# -eq 0 ] || [ "$1" = "-h" ] || [ "$1" = "--help" ]; then
+    echo "Usage: git worktree-create <branch-name> [base-branch]"
+    echo ""
+    echo "Create a new git worktree for parallel branch development."
+    echo ""
+    echo "Arguments:"
+    echo "  branch-name   Name of the branch to create (e.g., WORK-123-feature)"
+    echo "  base-branch   Base branch to branch from (default: main)"
+    echo ""
+    echo "Examples:"
+    echo "  git worktree-create WORK-123-oauth-integration"
+    echo "  git worktree-create WORK-123-oauth-integration main"
+    echo ""
+    echo "Features:"
+    echo "  - Creates worktree in hidden .worktrees/ folder"
+    echo "  - Copies PHPStorm settings from main worktree"
+    echo "  - Symlinks dependencies (vendor/, node_modules/) for faster setup"
+    exit 0
+fi
+
+# Check if in a git repository
+check_git_repo
+
+BRANCH_NAME="$1"
+BASE_BRANCH="${2:-main}"
+
+# Get repository root (works correctly from both main repo and worktrees)
+REPO_ROOT=$(get_repo_root)
+WORKTREE_DIR="$REPO_ROOT/.worktrees/$BRANCH_NAME"
+
+# Check if worktree already exists
+if [ -d "$WORKTREE_DIR" ]; then
+    error "Worktree already exists at: $WORKTREE_DIR"
+fi
+
+# Check if branch already exists
+if git show-ref --verify --quiet "refs/heads/$BRANCH_NAME"; then
+    warning "Branch '$BRANCH_NAME' already exists, will checkout existing branch"
+    BRANCH_EXISTS=true
+else
+    info "Creating new branch '$BRANCH_NAME' from '$BASE_BRANCH'"
+    BRANCH_EXISTS=false
+fi
+
+# Create .worktrees directory if it doesn't exist
+mkdir -p "$REPO_ROOT/.worktrees"
+
+# Create the worktree
+info "Creating worktree at: $WORKTREE_DIR"
+if [ "$BRANCH_EXISTS" = true ]; then
+    git worktree add "$WORKTREE_DIR" "$BRANCH_NAME"
+else
+    git worktree add -b "$BRANCH_NAME" "$WORKTREE_DIR" "$BASE_BRANCH"
+fi
+
+success "Worktree created successfully"
+
+# Copy .idea/ directory from main worktree if it exists
+if [ -d "$REPO_ROOT/.idea" ]; then
+    info "Copying PHPStorm settings from main worktree"
+    cp -r "$REPO_ROOT/.idea" "$WORKTREE_DIR/"
+    success "PHPStorm settings copied"
+else
+    info "No .idea/ directory found in main worktree"
+fi
+
+# Create symbolic links for dependencies
+SYMLINKED=false
+
+if [ -d "$REPO_ROOT/vendor" ]; then
+    info "Creating symlink for vendor/ directory"
+    ln -s "$REPO_ROOT/vendor" "$WORKTREE_DIR/vendor"
+    success "Symlinked vendor/ → main worktree"
+    SYMLINKED=true
+fi
+
+if [ -d "$REPO_ROOT/node_modules" ]; then
+    info "Creating symlink for node_modules/ directory"
+    ln -s "$REPO_ROOT/node_modules" "$WORKTREE_DIR/node_modules"
+    success "Symlinked node_modules/ → main worktree"
+    SYMLINKED=true
+fi
+
+if [ "$SYMLINKED" = true ]; then
+    echo ""
+    warning "Dependencies are symlinked to main worktree"
+    echo "  If you need different versions, run: composer install && npm install"
+fi
+
+echo ""
+success "All done!"
+echo ""
+echo "Next steps:"
+echo "  cd $WORKTREE_DIR"

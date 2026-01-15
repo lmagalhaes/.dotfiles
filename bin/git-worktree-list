@@ -1,0 +1,122 @@
+#!/usr/bin/env bash
+# git-worktree-list - List all worktrees with enhanced information
+#
+# Usage: git worktree-list
+
+# Source common functions and variables
+source "$(dirname "$0")/git-worktree-common"
+
+# Show help
+if [ $# -gt 0 ] && ([ "$1" = "-h" ] || [ "$1" = "--help" ]); then
+    echo "Usage: git worktree-list"
+    echo ""
+    echo "List all git worktrees with enhanced information."
+    echo ""
+    echo "Features:"
+    echo "  - Color-coded output"
+    echo "  - Shows current worktree"
+    echo "  - Displays allocated ports for each worktree"
+    echo ""
+    echo "Aliases:"
+    echo "  git wt-list"
+    echo "  git wt-ls"
+    exit 0
+fi
+
+# Check if in a git repository
+check_git_repo
+
+# Get repository root - physical path for comparison, logical path for display
+REPO_ROOT_PHYSICAL=$(get_repo_root_physical)
+REPO_ROOT_LOGICAL=$(get_repo_root_logical)
+CURRENT_BRANCH=$(git branch --show-current)
+
+echo ""
+echo -e "${BLUE}Git Worktrees${NC}"
+echo ""
+
+# Shorten logical path for display (preserves symlinks like ~/workspace/workyard/crew-api)
+SHORTENED_REPO_PATH=$(echo "$REPO_ROOT_LOGICAL" | sed -e "s|^$HOME/workspace/lmagalhaes|@lm|" -e "s|^$HOME/workspace/workyard|@wy|" -e "s|^$HOME|~|")
+
+# Parse git worktree list output
+git worktree list --porcelain | awk -v repo_root_physical="$REPO_ROOT_PHYSICAL" -v current_branch="$CURRENT_BRANCH" -v shortened_repo_path="$SHORTENED_REPO_PATH" '
+BEGIN {
+    # Color codes
+    GREEN = "\033[0;32m"
+    YELLOW = "\033[1;33m"
+    CYAN = "\033[0;36m"
+    GRAY = "\033[0;90m"
+    NC = "\033[0m"
+}
+
+/^worktree / {
+    if (worktree != "") {
+        print_worktree()
+    }
+    worktree = substr($0, 10)
+    branch = ""
+    is_bare = 0
+    is_detached = 0
+}
+
+/^HEAD / {
+    head = substr($0, 6)
+}
+
+/^branch / {
+    branch = substr($0, 8)
+    gsub(/^refs\/heads\//, "", branch)
+}
+
+/^bare$/ {
+    is_bare = 1
+}
+
+/^detached$/ {
+    is_detached = 1
+}
+
+END {
+    if (worktree != "") {
+        print_worktree()
+    }
+}
+
+function print_worktree() {
+    # Determine if this is the main worktree or current worktree
+    # Note: git worktree list uses physical paths, so compare against physical repo root
+    is_main = (worktree == repo_root_physical)
+    is_current = (branch == current_branch)
+
+    # Extract worktree name (last path component) for non-main worktrees
+    worktree_name = ""
+    if (!is_main) {
+        split(worktree, path_parts, "/")
+        worktree_name = path_parts[length(path_parts)]
+    }
+
+    # Build branch display: shortened_repo_path (branch-name)
+    branch_display = ""
+    current_marker = ""
+    if (is_current) {
+        current_marker = GREEN " - current" NC
+    }
+
+    if (branch != "") {
+        branch_display = shortened_repo_path " (" branch ")" current_marker
+    }
+
+    # Show worktree name for non-main worktrees
+    if (!is_main && worktree_name != "") {
+        printf "  %sWorktree:%s %s\n", CYAN, NC, worktree_name
+    }
+
+    # Show branch info
+    if (branch != "") {
+        printf "  %sBranch:%s %s\n", CYAN, NC, branch_display
+    } else if (is_detached) {
+        printf "  %sDetached HEAD:%s %s\n", CYAN, NC, substr(head, 1, 8)
+    }
+    printf "\n"
+}
+'

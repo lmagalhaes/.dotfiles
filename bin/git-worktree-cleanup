@@ -1,0 +1,165 @@
+#!/usr/bin/env bash
+# git-worktree-cleanup - Clean up stale or merged worktrees
+#
+# Usage: git worktree-cleanup [--dry-run] [--all]
+#        git worktree-cleanup           # Interactive cleanup of merged branches
+#        git worktree-cleanup --dry-run # Show what would be removed
+#        git worktree-cleanup --all     # Remove all worktrees except main
+
+# Source common functions and variables
+source "$(dirname "$0")/git-worktree-common"
+
+# Check if in a git repository
+check_git_repo
+
+# Parse arguments
+DRY_RUN=false
+REMOVE_ALL=false
+
+while [ $# -gt 0 ]; do
+    case "$1" in
+        --dry-run)
+            DRY_RUN=true
+            shift
+            ;;
+        --all)
+            REMOVE_ALL=true
+            shift
+            ;;
+        -h|--help)
+            echo "Usage: git worktree-cleanup [--dry-run] [--all]"
+            echo ""
+            echo "Options:"
+            echo "  --dry-run    Show what would be removed without removing"
+            echo "  --all        Remove all worktrees except main (prompts for confirmation)"
+            echo "  -h, --help   Show this help message"
+            exit 0
+            ;;
+        *)
+            error "Unknown option: $1"
+            ;;
+    esac
+done
+
+# Get repository root (works correctly from both main repo and worktrees)
+REPO_ROOT=$(get_repo_root)
+CURRENT_BRANCH=$(git branch --show-current)
+
+if [ "$DRY_RUN" = true ]; then
+    warning "DRY RUN MODE - No changes will be made"
+    echo ""
+fi
+
+# Get list of worktrees (excluding main/bare repository)
+WORKTREES=()
+BRANCHES=()
+
+while IFS= read -r line; do
+    if [[ $line == worktree\ * ]]; then
+        CURRENT_WORKTREE="${line#worktree }"
+        CURRENT_BRANCH_NAME=""
+    elif [[ $line == branch\ * ]]; then
+        CURRENT_BRANCH_NAME="${line#branch refs/heads/}"
+        # Only add if not the main repository
+        if [ "$CURRENT_WORKTREE" != "$REPO_ROOT" ]; then
+            WORKTREES+=("$CURRENT_WORKTREE")
+            BRANCHES+=("$CURRENT_BRANCH_NAME")
+        fi
+    fi
+done < <(git worktree list --porcelain)
+
+if [ ${#WORKTREES[@]} -eq 0 ]; then
+    info "No worktrees to clean up"
+    exit 0
+fi
+
+# Determine which worktrees to remove
+TO_REMOVE=()
+TO_REMOVE_BRANCHES=()
+
+if [ "$REMOVE_ALL" = true ]; then
+    warning "This will remove ALL ${#WORKTREES[@]} worktree(s)"
+    echo ""
+    for i in "${!WORKTREES[@]}"; do
+        echo "  - ${BRANCHES[$i]} (${WORKTREES[$i]})"
+    done
+    echo ""
+    read -p "Are you sure? (yes/no): " -r
+    if [[ ! $REPLY =~ ^[Yy][Ee][Ss]$ ]]; then
+        info "Cancelled"
+        exit 0
+    fi
+    TO_REMOVE=("${WORKTREES[@]}")
+    TO_REMOVE_BRANCHES=("${BRANCHES[@]}")
+else
+    # Check which branches have been merged into main
+    info "Checking for merged branches..."
+    MAIN_BRANCH=$(git symbolic-ref refs/remotes/origin/HEAD 2>/dev/null | sed 's@^refs/remotes/origin/@@' || echo "main")
+
+    for i in "${!WORKTREES[@]}"; do
+        BRANCH="${BRANCHES[$i]}"
+        WORKTREE="${WORKTREES[$i]}"
+
+        # Check if branch is merged into main
+        if git merge-base --is-ancestor "$BRANCH" "$MAIN_BRANCH" 2>/dev/null; then
+            # Check if branch has any unique commits
+            UNIQUE_COMMITS=$(git rev-list "$MAIN_BRANCH..$BRANCH" --count 2>/dev/null || echo "0")
+            if [ "$UNIQUE_COMMITS" -eq 0 ]; then
+                TO_REMOVE+=("$WORKTREE")
+                TO_REMOVE_BRANCHES+=("$BRANCH")
+            fi
+        fi
+    done
+
+    if [ ${#TO_REMOVE[@]} -eq 0 ]; then
+        success "No merged worktrees found"
+        exit 0
+    fi
+
+    echo ""
+    info "Found ${#TO_REMOVE[@]} merged worktree(s):"
+    echo ""
+    for i in "${!TO_REMOVE[@]}"; do
+        echo "  - ${TO_REMOVE_BRANCHES[$i]} (${TO_REMOVE[$i]})"
+    done
+    echo ""
+
+    if [ "$DRY_RUN" = false ]; then
+        read -p "Remove these worktrees? (yes/no): " -r
+        if [[ ! $REPLY =~ ^[Yy][Ee][Ss]$ ]]; then
+            info "Cancelled"
+            exit 0
+        fi
+    fi
+fi
+
+# Remove worktrees
+if [ "$DRY_RUN" = false ]; then
+    echo ""
+    for i in "${!TO_REMOVE[@]}"; do
+        WORKTREE="${TO_REMOVE[$i]}"
+        BRANCH="${TO_REMOVE_BRANCHES[$i]}"
+
+        info "Removing worktree: $BRANCH"
+        git worktree remove "$WORKTREE" --force
+
+        # Ask if branch should be deleted too
+        read -p "Delete branch '$BRANCH'? (y/n): " -r
+        if [[ $REPLY =~ ^[Yy]$ ]]; then
+            git branch -D "$BRANCH"
+            success "Deleted branch: $BRANCH"
+        else
+            info "Kept branch: $BRANCH"
+        fi
+    done
+
+    echo ""
+    success "Cleanup complete!"
+else
+    echo ""
+    info "Dry run complete - use without --dry-run to remove"
+fi
+
+# Clean up any stale worktree administrative files
+info "Pruning worktree metadata..."
+git worktree prune
