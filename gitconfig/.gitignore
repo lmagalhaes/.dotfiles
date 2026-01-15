@@ -20,3 +20,5 @@ npm-debug.log
 .env.bak
 .venv.bak
 
+# Git worktrees
+.worktrees/

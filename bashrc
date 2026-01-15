@@ -16,7 +16,7 @@ then
     fi;
 fi;
 
-PATH="$HOME/bin:$HOME/workspace/lmagalhaes/bin:$PATH"
+PATH="$HOME/.dotfiles/bin:$HOME/bin:$HOME/workspace/lmagalhaes/bin:$PATH"
 
 eval $(keychain -q --timeout 480 --eval ~/.ssh/id_ed25519 ~/.ssh/id_rsa)
 eval "$(task --completion bash)"
@@ -32,6 +32,10 @@ export HOMEBREW_BUNDLE_FILE=$HOME/.dotfiles/Brewfile
 # Brew bash completion
 [[ -r "$HOMEBREW_PREFIX/etc/profile.d/bash_completion.sh" ]] && . "$HOMEBREW_PREFIX/etc/profile.d/bash_completion.sh"
 
+# Load custom bash completions
+for completion_file in ~/.bash_completion.d/*; do
+    [ -f "$completion_file" ] && source "$completion_file"
+done
 
 # Pyenv configuration
 if command -v pyenv 1>/dev/null 2>&1; then
