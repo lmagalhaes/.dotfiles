@@ -82,7 +82,7 @@ autocmd BufRead,BufNewFile .env* setlocal filetype=sh
 
 " Column marker (code style guide)
 set colorcolumn=120
-highlight ColorColumn ctermbg=235 guibg=#2c2d27
+highlight ColorColumn ctermbg=255 guibg=#f5f5f5
 
 " Better line wrapping behavior
 set linebreak           " Don't break words when wrapping
