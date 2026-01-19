@@ -1,0 +1,5 @@
+# Ignore all session data (contains session-specific context and history)
+sessions/
+
+# But keep settings if they become tracked
+!settings.local.json

@@ -1,0 +1,18 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(test:*)",
+      "WebSearch",
+      "Bash(git rev-parse:*)",
+      "Bash(TZ='Australia/Sydney' date:*)",
+      "Bash(curl:*)",
+      "Bash(git-worktree-list:*)",
+      "Bash(dirname:*)",
+      "Bash(git branch:*)",
+      "Bash(pwd:*)",
+      "Read(/Users/lmagalhaes/.claude/contexts/*)",
+      "Read(/Users/lmagalhaes/.claude/sessions/*)",
+      "Read(/Users/lmagalhaes/.dotfiles/.claude/sessions/*)"
+    ]
+  }
+}
