@@ -205,6 +205,48 @@ Fixed stuff                     # Not descriptive
 - Group related changes together
 - Don't artificially split if it breaks coherence
 
+### Git Worktree Workflow
+
+**Overview:**
+Use git worktrees for parallel development on multiple tickets/branches simultaneously.
+
+**Preferences:**
+- **Always use wt-* aliases** instead of `git worktree` commands:
+  - `git wt-create` instead of `git worktree add`
+  - `git wt-list` or `git wt-ls` instead of `git worktree list`
+  - `git wt-rm` instead of `git worktree remove`
+  - `git wt-cleanup` for removing stale worktrees
+  - `git wt-docker` for Docker container switching
+
+**Branch Naming Convention:**
+- Format: `[TICKET_ID]-[concise-title]`
+- Example: `PLA-123-add-user-auth`, `PROJ-456-fix-login-bug`
+- Worktree path: `.worktrees/[TICKET_ID]-[concise-title]`
+
+**Ticket Workflow Commands:**
+- **`/start-ticket <ticket-id>`** - Create/switch to worktree for ticket
+  - Fetches ticket details from Linear
+  - Creates worktree if doesn't exist (`.worktrees/[TICKET_ID]-[title]`)
+  - CDs into worktree
+  - Rebases with main (unless instructed otherwise)
+  - Asks about Docker container switching (don't assume)
+
+- **`/finish-ticket`** - Safe cleanup workflow
+  - Checks for uncommitted changes
+  - CDs out of worktree to parent repo
+  - Offers to create PR or delete worktree
+
+**Safety Rules:**
+- **Never delete a worktree while pwd is inside it** - Always cd out first
+- **Always rebase with main** before starting/resuming work (unless told otherwise)
+- **Ask before switching Docker** - User may be working on multiple projects
+
+**Automatic Behavior:**
+When user says "let's work on ticket X" or "start ticket X":
+1. Suggest using `/start-ticket X` command
+2. If worktree exists, cd to it and verify it's rebased
+3. If doesn't exist, create with proper naming convention
+
 ---
 
 ## Communication Preferences
