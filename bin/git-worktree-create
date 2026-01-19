@@ -25,7 +25,8 @@ if [ $# -eq 0 ] || [ "$1" = "-h" ] || [ "$1" = "--help" ]; then
     echo "Features:"
     echo "  - Creates worktree in hidden .worktrees/ folder"
     echo "  - Copies PHPStorm settings from main worktree"
-    echo "  - Symlinks dependencies (vendor/, node_modules/) for faster setup"
+    echo "  - Automatically switches Docker to new worktree"
+    echo "  - Installs PHP dependencies in container (via task install-dep:crew-api)"
     exit 0
 fi
 
@@ -75,27 +76,36 @@ else
     info "No .idea/ directory found in main worktree"
 fi
 
-# Create symbolic links for dependencies
-SYMLINKED=false
+# Switch Docker to new worktree and install dependencies
+DOCKER_DIR=~/workspace/workyard/dev-env/workyard-api
 
-if [ -d "$REPO_ROOT/vendor" ]; then
-    info "Creating symlink for vendor/ directory"
-    ln -s "$REPO_ROOT/vendor" "$WORKTREE_DIR/vendor"
-    success "Symlinked vendor/ → main worktree"
-    SYMLINKED=true
-fi
-
-if [ -d "$REPO_ROOT/node_modules" ]; then
-    info "Creating symlink for node_modules/ directory"
-    ln -s "$REPO_ROOT/node_modules" "$WORKTREE_DIR/node_modules"
-    success "Symlinked node_modules/ → main worktree"
-    SYMLINKED=true
-fi
-
-if [ "$SYMLINKED" = true ]; then
+if [ -d "$DOCKER_DIR" ]; then
     echo ""
-    warning "Dependencies are symlinked to main worktree"
-    echo "  If you need different versions, run: composer install && npm install"
+    info "Switching Docker to new worktree..."
+
+    # Switch Docker mount to new worktree
+    if git-worktree-switch-docker "$BRANCH_NAME" >/dev/null 2>&1; then
+        success "Docker switched to $BRANCH_NAME"
+
+        # Wait for containers to be healthy
+        info "Waiting for containers to be ready..."
+        sleep 5
+
+        # Install PHP dependencies in container
+        info "Installing PHP dependencies..."
+        cd "$DOCKER_DIR"
+        if task install-dep:crew-api; then
+            success "Dependencies installed successfully"
+        else
+            warning "Failed to install dependencies - you may need to run 'task install-dep:crew-api' manually"
+        fi
+        cd - >/dev/null
+    else
+        warning "Failed to switch Docker - you may need to run 'git wt-docker $BRANCH_NAME' manually"
+    fi
+else
+    info "Docker directory not found - skipping dependency installation"
+    echo "  To install dependencies manually, run: git wt-docker $BRANCH_NAME && cd $DOCKER_DIR && task install-dep:crew-api"
 fi
 
 echo ""

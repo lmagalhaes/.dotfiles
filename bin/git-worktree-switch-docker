@@ -4,26 +4,8 @@
 # Usage: git worktree-switch-docker <branch-name>
 #        git worktree-switch-docker main
 
-set -euo pipefail
-
-# Colors
-RED='\033[0;31m'
-GREEN='\033[0;32m'
-BLUE='\033[0;34m'
-NC='\033[0m'
-
-error() {
-    echo -e "${RED}Error: $1${NC}" >&2
-    exit 1
-}
-
-info() {
-    echo -e "${BLUE}→ $1${NC}"
-}
-
-success() {
-    echo -e "${GREEN}✓ $1${NC}"
-}
+# Source common functions and variables
+source "$(dirname "$0")/git-worktree-common"
 
 # Docker directory (hardcoded for crew-api, could be made generic later)
 DOCKER_DIR=~/workspace/workyard/dev-env/workyard-api
@@ -48,15 +30,14 @@ fi
 
 # Show status
 if [ "$1" = "status" ]; then
-    if [ -f "$ENV_FILE" ] && grep -q "^CREW_API_MOUNT=" "$ENV_FILE"; then
-        CURRENT=$(grep "^CREW_API_MOUNT=" "$ENV_FILE" | cut -d'=' -f2)
-        echo "Docker currently pointing to: $CURRENT"
-        if [[ "$CURRENT" == *".worktrees/"* ]]; then
-            BRANCH=$(basename "$CURRENT")
-            echo "Active worktree: $BRANCH"
-        else
-            echo "Active branch: main (default)"
-        fi
+    if [ -f "$ENV_FILE" ] && grep -q "^CREW_API_MOUNT_PATH=" "$ENV_FILE"; then
+        CURRENT_PATH=$(grep "^CREW_API_MOUNT_PATH=" "$ENV_FILE" | cut -d'=' -f2)
+        CURRENT_BRANCH=$(grep "^CREW_API_ACTIVE_BRANCH=" "$ENV_FILE" | cut -d'=' -f2)
+        CURRENT_GIT_DIR=$(grep "^CREW_API_GIT_DIR=" "$ENV_FILE" | cut -d'=' -f2)
+
+        echo "Docker currently pointing to: $CURRENT_PATH"
+        echo "Active branch: $CURRENT_BRANCH"
+        echo "Git directory: $CURRENT_GIT_DIR"
     else
         echo "Docker using default mount: ./crew-api (main)"
     fi
@@ -68,17 +49,15 @@ fi
 BRANCH=$1
 
 # Get repository root
-if ! git rev-parse --git-dir &>/dev/null; then
-    error "Not in a git repository"
-fi
+check_git_repo
+REPO_ROOT=$(get_repo_root)
 
-REPO_ROOT=$(dirname "$(git rev-parse --git-common-dir)")
-
-# Determine mount path
+# Determine mount path and git directory
 if [ "$BRANCH" = "main" ] || [ "$BRANCH" = "." ]; then
-    # Use default (unset variable to use docker-compose default)
-    MOUNT_PATH=""
-    info "Switching to main branch (default mount)"
+    # Main branch
+    MOUNT_PATH="./crew-api"
+    GIT_DIR="/opt/crew-api.git"
+    info "Switching to main branch"
 else
     # Check if worktree exists
     WORKTREE_PATH="$REPO_ROOT/.worktrees/$BRANCH"
@@ -86,46 +65,31 @@ else
         error "Worktree not found: $WORKTREE_PATH"
     fi
 
-    # Use relative path from docker directory
+    # Use relative path from docker directory for mount
     MOUNT_PATH="./crew-api/.worktrees/$BRANCH"
+    # Git directory points to worktree-specific metadata
+    GIT_DIR="/opt/crew-api.git/worktrees/$BRANCH"
     info "Switching to worktree: $BRANCH"
 fi
 
 # Write selection to .env file (persists across sessions)
 cd "$DOCKER_DIR"
 
-if [ -z "$MOUNT_PATH" ]; then
-    # Main branch - remove .env entry or set to default
-    if [ -f "$ENV_FILE" ]; then
-        # Remove CREW_API_MOUNT line if it exists
-        grep -v "^CREW_API_MOUNT=" "$ENV_FILE" > "$ENV_FILE.tmp" 2>/dev/null || true
-        mv "$ENV_FILE.tmp" "$ENV_FILE"
-        # Remove .env if now empty
-        if [ ! -s "$ENV_FILE" ]; then
-            rm "$ENV_FILE"
-        fi
-    fi
-    info "Using default mount: ./crew-api"
-else
-    # Worktree - write to .env file
-    if [ -f "$ENV_FILE" ]; then
-        # Update existing line or add new one
-        if grep -q "^CREW_API_MOUNT=" "$ENV_FILE"; then
-            sed -i.bak "s|^CREW_API_MOUNT=.*|CREW_API_MOUNT=$MOUNT_PATH|" "$ENV_FILE"
-            rm -f "$ENV_FILE.bak"
-        else
-            echo "CREW_API_MOUNT=$MOUNT_PATH" >> "$ENV_FILE"
-        fi
-    else
-        # Create new .env file
-        echo "CREW_API_MOUNT=$MOUNT_PATH" > "$ENV_FILE"
-    fi
-    info "Mount path: $MOUNT_PATH (saved to .env)"
-fi
+# Write all three required variables to .env
+cat > "$ENV_FILE" <<EOF
+CREW_API_ACTIVE_BRANCH=$BRANCH
+CREW_API_MOUNT_PATH=$MOUNT_PATH
+CREW_API_GIT_DIR=$GIT_DIR
+EOF
 
-# Restart containers with new mount
+info "Configuration saved to .env:"
+info "  Branch: $BRANCH"
+info "  Mount path: $MOUNT_PATH"
+info "  Git directory: $GIT_DIR"
+
+# Restart containers with new mount (stop + start to pick up volume changes)
 info "Restarting containers..."
-docker compose restart nginx workyard-api workyard-api-queue
+task restart:crew-api
 
 echo ""
 success "Docker switched successfully!"
