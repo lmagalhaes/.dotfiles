@@ -1,4 +1,4 @@
-eap "homebrew/bundle"
+tap "homebrew/bundle"
 tap "warrensbox/tap"
 brew "awscli"
 brew "bash"
