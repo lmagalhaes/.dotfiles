@@ -336,18 +336,24 @@ else
 
   ACTUAL_COUNT=$(echo "$SESSIONS_JSON" | jq 'length')
 
-  # Check for branch mismatch (only relevant if showing sessions from other branches)
+  # Check for branch/directory mismatch (only relevant if showing sessions from other branches)
   FIRST_SESSION_BRANCH=$(echo "$SESSIONS_JSON" | jq -r '.[0].data.git_branch // "unknown"')
+  FIRST_SESSION_DIR=$(echo "$SESSIONS_JSON" | jq -r '.[0].data.working_directory // ""')
   BRANCH_MISMATCH=false
+  DIR_MISMATCH=false
   [ -n "$CURRENT_BRANCH" ] && [ "$FIRST_SESSION_BRANCH" != "$CURRENT_BRANCH" ] && [ "$ALL_BRANCHES" = true ] && BRANCH_MISMATCH=true
+  [ -n "$FIRST_SESSION_DIR" ] && [ "$FIRST_SESSION_DIR" != "$CWD" ] && DIR_MISMATCH=true
 
   jq -n \
     --arg mode "$MODE" \
     --arg cwd "$CWD" \
     --arg current_branch "$CURRENT_BRANCH" \
     --arg target_branch "$TARGET_BRANCH" \
+    --arg first_session_branch "$FIRST_SESSION_BRANCH" \
+    --arg first_session_dir "$FIRST_SESSION_DIR" \
     --argjson all_branches "$ALL_BRANCHES" \
     --argjson branch_mismatch "$BRANCH_MISMATCH" \
+    --argjson dir_mismatch "$DIR_MISMATCH" \
     --argjson count "$ACTUAL_COUNT" \
     --argjson sessions "$SESSIONS_JSON" \
     '{
@@ -357,6 +363,13 @@ else
       target_branch: (if $target_branch != "" then $target_branch else null end),
       all_branches: $all_branches,
       branch_mismatch: $branch_mismatch,
+      dir_mismatch: $dir_mismatch,
+      mismatch_info: (if $branch_mismatch or $dir_mismatch then {
+        current_branch: $current_branch,
+        session_branch: $first_session_branch,
+        current_dir: $cwd,
+        session_dir: $first_session_dir
+      } else null end),
       count: $count,
       sessions: $sessions
     }'
