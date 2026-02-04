@@ -27,7 +27,7 @@ set smartcase           " Case sensitive when uppercase present
 set backspace=indent,eol,start  " Backspace behavior
 set encoding=utf-8      " UTF-8 encoding
 set scrolloff=3         " Keep 3 lines visible above/below cursor
-set clipboard=unnamed   " Use system clipboard (macOS)
+set clipboard=unnamedplus   " Use system clipboard (macOS)
 
 " Visual
 syntax on               " Enable syntax highlighting
@@ -37,9 +37,9 @@ set cursorline          " Highlight current line
 " Centralized backup files (clean workspace but safe)
 set backup
 set writebackup
-set backupdir=~/.vim/backup//
-set directory=~/.vim/swap//
-set undodir=~/.vim/undo//
+set backupdir=~/.vim/backup/
+set directory=~/.vim/swap/
+set undodir=~/.vim/undo/
 set undofile                " Persistent undo across sessions
 
 " Create backup directories if they don't exist
