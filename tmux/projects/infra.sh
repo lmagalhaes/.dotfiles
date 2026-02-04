@@ -1,5 +1,5 @@
 #!/bin/bash
-# Project: [Project Display Name]
+# Project: Workyard Infra
 #
 # To create a new project:
 # 1. Copy this file to a new name: cp template.sh.example my-project.sh
@@ -9,7 +9,7 @@
 # Category for menu grouping (e.g., "Workyard", "Personal", "Client Work")
 PROJECT_CATEGORY="Workyard"
 
-# Project identifier (used for session name: dev-PROJECT_NAME)
+# Project identifier (used for session name)
 PROJECT_NAME="infra"
 
 # Single character hotkey for the menu (must be unique)
@@ -26,5 +26,3 @@ PROJECT_CMD="pwd"
 
 # Optional: Uncomment to disable specific windows
 # SKIP_RUNTIME=true
-# SKIP_LOGS=true
-# SKIP_SHELL=true

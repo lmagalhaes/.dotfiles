@@ -33,9 +33,29 @@ echo "Shell..."
 link "$DOTFILES/bashrc" "$HOME/.bashrc"
 link "$DOTFILES/bash_profile" "$HOME/.bash_profile"
 
-# Git
+# Git (create file with include, not symlink - allows tools to add machine-local config)
 echo "Git..."
-link "$DOTFILES/git-profiles/main.gitconfig" "$HOME/.gitconfig"
+if [ -L "$HOME/.gitconfig" ]; then
+  echo "  Removing old symlink $HOME/.gitconfig"
+  rm "$HOME/.gitconfig"
+fi
+if [ -f "$HOME/.gitconfig" ] && grep -q "path = ~/.dotfiles/git-profiles/main.gitconfig" "$HOME/.gitconfig" 2>/dev/null; then
+  echo "  Skipping $HOME/.gitconfig (already configured)"
+else
+  if [ -f "$HOME/.gitconfig" ]; then
+    echo "  Backing up $HOME/.gitconfig to $HOME/.gitconfig.backup"
+    mv "$HOME/.gitconfig" "$HOME/.gitconfig.backup"
+  fi
+  cat > "$HOME/.gitconfig" << 'EOF'
+# Machine-local git config
+# Includes dotfiles config, keeps local/tool-generated configs separate
+[include]
+    path = ~/.dotfiles/git-profiles/main.gitconfig
+
+# Machine-specific configs added below by tools (CodeRabbit, etc.)
+EOF
+  echo "  Created $HOME/.gitconfig"
+fi
 
 # Vim
 echo "Vim..."

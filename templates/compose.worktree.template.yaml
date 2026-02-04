@@ -14,7 +14,7 @@ volumes:
 
 services:
   nginx:
-    image: nginx:bookworm
+    image: nginx:1.27-bookworm
     container_name: nginx-{{SLUG}}
     hostname: nginx-{{SLUG}}.workyard.test
     labels:
@@ -62,7 +62,6 @@ services:
       test: ["CMD", "curl", "-f", "http://localhost/healthcheck"]
       interval: 10s
       timeout: 5s
-      disable: false
     networks:
       - public
 
@@ -74,6 +73,6 @@ services:
       GIT_DIR: {{GIT_DIR}}
       GIT_WORK_TREE: /var/www/html
       PHP_IDE_CONFIG: "serverName=api-queue-{{SLUG}}.workyard.test"
-      XDEBUG_CONFIG: "mode=off start_with_request=trigger"
+      XDEBUG_MODE: "off"
     command: ['php', 'artisan', 'queue:listen', '--timeout=600']
     restart: unless-stopped
