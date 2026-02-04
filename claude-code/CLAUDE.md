@@ -255,6 +255,43 @@ When user says "let's work on ticket X" or "start ticket X":
 2. If worktree exists, cd to it and verify it's rebased
 3. If doesn't exist, create with proper naming convention
 
+### Dynamic Working Directory (Status Line)
+
+The status line shows Claude's current working directory, which can be changed dynamically during a session.
+
+**Why this matters:**
+- `cd` commands in Bash don't persist (each command runs in isolated shell)
+- The status line reflects where Claude is "logically" working
+- Useful when switching between worktrees or projects within a session
+
+**How to change working directory:**
+When user asks to "work in", "switch to", or "change to" a directory, run:
+```bash
+/Users/lmagalhaes/.claude/set-cwd.sh "<original_workspace>" "<new_directory>"
+```
+
+**Parameters:**
+- `<original_workspace>`: Your session's original working directory (from env info at session start)
+- `<new_directory>`: The directory to switch to (use absolute path)
+
+**Example:**
+```bash
+# If your session started in /Users/lmagalhaes/workspace/workyard/crew-api
+# and user says "work in the pla-123 worktree":
+/Users/lmagalhaes/.claude/set-cwd.sh "/Users/lmagalhaes/workspace/workyard/crew-api" "/Users/lmagalhaes/workspace/workyard/crew-api/.worktrees/pla-123-feature"
+```
+
+**How it works:**
+- Each Claude instance is identified by its original workspace directory
+- Session mapping stored in `/tmp/claude-sessions.json`
+- CWD overrides stored in `/tmp/claude-cwd-{session_id}`
+- Automatically cleaned up when session ends (via SessionEnd hook)
+
+**Important:**
+- Do NOT use `cd` to change directories - it doesn't work
+- Always use absolute paths
+- The original workspace is in your environment info at session start
+
 ---
 
 ## Communication Preferences

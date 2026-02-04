@@ -1,0 +1,62 @@
+{
+  "$schema": "https://json.schemastore.org/claude-code-settings.json",
+  "includeCoAuthoredBy": false,
+  "hooks": {
+    "SessionEnd": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash -c 'INPUT=$(cat); SID=$(echo \"$INPUT\" | jq -r \".session_id // empty\"); CWD=$(echo \"$INPUT\" | jq -r \".cwd // empty\"); [ -n \"$SID\" ] && rm -f \"/tmp/claude-cwd-${SID}\"; [ -n \"$CWD\" ] && [ -f /tmp/claude-sessions.json ] && jq --arg dir \"$CWD\" \"del(.[\\$dir])\" /tmp/claude-sessions.json > /tmp/claude-sessions.json.tmp && mv /tmp/claude-sessions.json.tmp /tmp/claude-sessions.json'"
+          }
+        ]
+      }
+    ]
+  },
+  "permissions": {
+    "allow": [
+      "Bash(~/.claude/set-cwd.sh *)",
+      "Bash(/Users/lmagalhaes/.claude/set-cwd.sh *)",
+      "Bash(*git rev-parse*)",
+      "Bash(*git branch*)",
+      "Bash(*git status*)",
+      "Bash(*git log*)",
+      "Bash(*git diff*)",
+      "Bash(*git worktree list*)",
+      "Bash(*pwd*)",
+      "Bash(*dirname*)",
+      "Bash(*realpath*)",
+      "Bash(*cd*)",
+      "Bash(*cat*)",
+      "Bash(*ls*)",
+      "Bash(*test*)",
+      "Bash(*echo*)",
+      "Bash(TZ=Australia/Sydney date *)",
+      "Bash(*date*)",
+      "Read(/Users/lmagalhaes/.claude/contexts/**)",
+      "Read(/Users/lmagalhaes/.claude/contexts/*)",
+      "Read(~/.claude/contexts/**)",
+      "Read(~/.claude/contexts/*)",
+      "Read(/Users/lmagalhaes/.claude/sessions/**)",
+      "Read(/Users/lmagalhaes/.claude/sessions/*)",
+      "Read(/Users/lmagalhaes/.dotfiles/.claude/sessions/**)",
+      "Read(/Users/lmagalhaes/.dotfiles/.claude/sessions/*)",
+      "Read(**/.claude/sessions/**)",
+      "Read(**/.claude/sessions/*)",
+      "Write(/Users/lmagalhaes/.claude/sessions/**)",
+      "Write(/Users/lmagalhaes/.dotfiles/.claude/sessions/**)",
+      "Write(**/.claude/sessions/**)"
+    ]
+  },
+  "model": "opus",
+  "statusLine": {
+    "type": "command",
+    "command": "bash ~/.claude/statusline-command.sh"
+  },
+  "feedbackSurveyState": {
+    "lastShownTime": 1754024052158
+  },
+  "enabledPlugins": {
+    "coderabbit@claude-plugins-official": true
+  }
+}
