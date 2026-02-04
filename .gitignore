@@ -1,3 +1,6 @@
 .idea
 *.sw[po]
 secrets.env
+
+# Session-specific files (per-user)
+.claude/task-context.md
