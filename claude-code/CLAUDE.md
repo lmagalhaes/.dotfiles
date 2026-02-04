@@ -209,14 +209,18 @@ Fixed stuff                     # Not descriptive
 
 **Overview:**
 Use git worktrees for parallel development on multiple tickets/branches simultaneously.
+Each worktree gets its own isolated Docker containers accessible via unique URLs.
+
+**Documentation:**
+For detailed architecture and troubleshooting, read: `~/.dotfiles/.claude/docs/parallel-worktree-docker.md`
 
 **Preferences:**
 - **Always use wt-* aliases** instead of `git worktree` commands:
-  - `git wt-create` instead of `git worktree add`
+  - `git wt-create` instead of `git worktree add` (also sets up Docker)
   - `git wt-list` or `git wt-ls` instead of `git worktree list`
-  - `git wt-rm` instead of `git worktree remove`
+  - `git wt-rm` instead of `git worktree remove` (also cleans up Docker)
   - `git wt-cleanup` for removing stale worktrees
-  - `git wt-docker` for Docker container switching
+  - `git wt-docker` for Docker commands in current worktree (auto-detects context)
 
 **Branch Naming Convention:**
 - Format: `[TICKET_ID]-[concise-title]`
@@ -227,9 +231,9 @@ Use git worktrees for parallel development on multiple tickets/branches simultan
 - **`/start-ticket <ticket-id>`** - Create/switch to worktree for ticket
   - Fetches ticket details from Linear
   - Creates worktree if doesn't exist (`.worktrees/[TICKET_ID]-[title]`)
+  - Starts isolated Docker containers for the worktree
   - CDs into worktree
   - Rebases with main (unless instructed otherwise)
-  - Asks about Docker container switching (don't assume)
 
 - **`/finish-ticket`** - Safe cleanup workflow
   - Checks for uncommitted changes
@@ -239,7 +243,11 @@ Use git worktrees for parallel development on multiple tickets/branches simultan
 **Safety Rules:**
 - **Never delete a worktree while pwd is inside it** - Always cd out first
 - **Always rebase with main** before starting/resuming work (unless told otherwise)
-- **Ask before switching Docker** - User may be working on multiple projects
+- **Parallel Docker containers** - Each worktree has isolated containers; no need to stop main
+
+**Docker URLs:**
+- Main branch: `https://api.workyard.test`
+- Worktrees: `https://api-{slug}.workyard.test` (e.g., `api-pla-123.workyard.test`)
 
 **Automatic Behavior:**
 When user says "let's work on ticket X" or "start ticket X":

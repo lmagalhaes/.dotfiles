@@ -1,0 +1,79 @@
+# compose.worktree.{{SLUG}}.yaml
+# Generated for worktree: {{BRANCH_NAME}}
+# Mount path: {{MOUNT_PATH}}
+#
+# Do not edit manually - regenerate with: git wt-docker init
+
+networks:
+  public:
+    external: true
+
+volumes:
+  composer-cache:
+    external: true  # Shared across all worktrees for performance
+
+services:
+  nginx:
+    image: nginx:bookworm
+    container_name: nginx-{{SLUG}}
+    hostname: nginx-{{SLUG}}.workyard.test
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.services.workyard-api-{{SLUG}}.loadbalancer.server.port=80"
+      - "traefik.http.routers.workyard-api-{{SLUG}}.rule=Host(`api-{{SLUG}}.workyard.test`)"
+      - "traefik.http.routers.workyard-api-{{SLUG}}.tls=true"
+    volumes:
+      - ./docker/config/nginx-php-fpm.conf:/etc/nginx/nginx.conf
+      - {{MOUNT_PATH}}:/var/www/html
+      - ./crew-api/.git:/opt/crew-api.git
+      - {{MOUNT_PATH}}/vendor:/var/www/html/vendor:cached
+    depends_on:
+      - workyard-api
+    networks:
+      - public
+
+  workyard-api: &workyard-api
+    image: php-base:8.3-fpm-bookworm
+    container_name: workyard-api-{{SLUG}}
+    hostname: api-{{SLUG}}.workyard.test
+    build:
+      args:
+        MODE: dev
+        PHP_VERSION: 8.3
+      dockerfile: Dockerfile-bookworm
+      tags:
+        - workyard:crew-api-local-8.3
+      context: .
+    volumes:
+      - {{MOUNT_PATH}}:/var/www/html
+      - ./crew-api/.git:/opt/crew-api.git
+      - {{MOUNT_PATH}}/vendor:/var/www/html/vendor:cached
+      - ../core/mysql/certs:/certs
+      - ~/.aws/credentials:/root/.aws/credentials
+      - ./docker/config/php/php.ini-development:/usr/local/etc/php/php.ini
+      - composer-cache:/root/.composer
+    environment:
+      GIT_DIR: {{GIT_DIR}}
+      GIT_WORK_TREE: /var/www/html
+      PHP_IDE_CONFIG: "serverName=api-{{SLUG}}.workyard.test"
+      XDEBUG_MODE: debug
+      XDEBUG_CONFIG: "start_with_request=trigger log_level=7 log=/var/www/html/xdebug.log"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost/healthcheck"]
+      interval: 10s
+      timeout: 5s
+      disable: false
+    networks:
+      - public
+
+  workyard-api-queue:
+    <<: *workyard-api
+    container_name: workyard-api-queue-{{SLUG}}
+    hostname: api-queue-{{SLUG}}.workyard.test
+    environment:
+      GIT_DIR: {{GIT_DIR}}
+      GIT_WORK_TREE: /var/www/html
+      PHP_IDE_CONFIG: "serverName=api-queue-{{SLUG}}.workyard.test"
+      XDEBUG_CONFIG: "mode=off start_with_request=trigger"
+    command: ['php', 'artisan', 'queue:listen', '--timeout=600']
+    restart: unless-stopped
