@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# git-worktree-create - Create a new git worktree
+# git-worktree-create - Create a new git worktree with parallel Docker support
 #
 # Usage: git worktree-create <branch-name> [base-branch]
 #        git worktree-create WORK-123-oauth-integration
@@ -25,8 +25,13 @@ if [ $# -eq 0 ] || [ "$1" = "-h" ] || [ "$1" = "--help" ]; then
     echo "Features:"
     echo "  - Creates worktree in hidden .worktrees/ folder"
     echo "  - Copies PHPStorm settings from main worktree"
-    echo "  - Automatically switches Docker to new worktree"
-    echo "  - Installs PHP dependencies in container (via task install-dep:crew-api)"
+    echo "  - Generates Docker compose file for parallel containers"
+    echo "  - Starts worktree containers (main containers keep running)"
+    echo "  - Installs PHP dependencies in container"
+    echo ""
+    echo "Docker URLs:"
+    echo "  Main:     https://api.workyard.test"
+    echo "  Worktree: https://api-{slug}.workyard.test"
     exit 0
 fi
 
@@ -36,9 +41,12 @@ check_git_repo
 BRANCH_NAME="$1"
 BASE_BRANCH="${2:-main}"
 
-# Get repository root (works correctly from both main repo and worktrees)
-REPO_ROOT=$(get_repo_root)
+# Get repository root (use logical path for consistent absolute paths)
+REPO_ROOT=$(get_repo_root_logical)
 WORKTREE_DIR="$REPO_ROOT/.worktrees/$BRANCH_NAME"
+
+# Get branch slug for container naming
+BRANCH_SLUG=$(get_branch_slug "$BRANCH_NAME")
 
 # Check if worktree already exists
 if [ -d "$WORKTREE_DIR" ]; then
@@ -76,16 +84,37 @@ else
     info "No .idea/ directory found in main worktree"
 fi
 
-# Switch Docker to new worktree and install dependencies
+# Generate Docker compose file and start containers
 DOCKER_DIR=~/workspace/workyard/dev-env/workyard-api
+TEMPLATE_FILE=~/.dotfiles/templates/compose.worktree.template.yaml
 
-if [ -d "$DOCKER_DIR" ]; then
+if [ -d "$DOCKER_DIR" ] && [ -f "$TEMPLATE_FILE" ]; then
     echo ""
-    info "Switching Docker to new worktree..."
+    info "Setting up Docker for parallel worktree..."
 
-    # Switch Docker mount to new worktree
-    if git-worktree-switch-docker "$BRANCH_NAME" >/dev/null 2>&1; then
-        success "Docker switched to $BRANCH_NAME"
+    # Calculate paths
+    MOUNT_PATH="./crew-api/.worktrees/$BRANCH_NAME"
+    GIT_DIR="/opt/crew-api.git/worktrees/$BRANCH_NAME"
+    COMPOSE_FILE="$DOCKER_DIR/compose.worktree.${BRANCH_SLUG}.yaml"
+
+    # Generate compose file from template
+    info "Generating compose file: compose.worktree.${BRANCH_SLUG}.yaml"
+    sed -e "s|{{SLUG}}|${BRANCH_SLUG}|g" \
+        -e "s|{{BRANCH_NAME}}|${BRANCH_NAME}|g" \
+        -e "s|{{MOUNT_PATH}}|${MOUNT_PATH}|g" \
+        -e "s|{{GIT_DIR}}|${GIT_DIR}|g" \
+        "$TEMPLATE_FILE" > "$COMPOSE_FILE"
+
+    success "Compose file created"
+
+    # Start worktree containers (main containers keep running)
+    info "Starting worktree containers..."
+    cd "$DOCKER_DIR"
+
+    PROJECT_NAME="workyard-api-${BRANCH_SLUG}"
+    if docker compose -f docker-compose.yml -f "compose.worktree.${BRANCH_SLUG}.yaml" \
+        --project-name "$PROJECT_NAME" up -d; then
+        success "Containers started: $PROJECT_NAME"
 
         # Wait for containers to be healthy
         info "Waiting for containers to be ready..."
@@ -93,23 +122,38 @@ if [ -d "$DOCKER_DIR" ]; then
 
         # Install PHP dependencies in container
         info "Installing PHP dependencies..."
-        cd "$DOCKER_DIR"
-        if task install-dep:crew-api; then
+        if docker compose -f docker-compose.yml -f "compose.worktree.${BRANCH_SLUG}.yaml" \
+            --project-name "$PROJECT_NAME" \
+            exec -T workyard-api composer install --no-interaction; then
             success "Dependencies installed successfully"
         else
-            warning "Failed to install dependencies - you may need to run 'task install-dep:crew-api' manually"
+            warning "Failed to install dependencies - run manually:"
+            echo "  git wt-docker exec workyard-api composer install"
         fi
-        cd - >/dev/null
     else
-        warning "Failed to switch Docker - you may need to run 'git wt-docker $BRANCH_NAME' manually"
+        warning "Failed to start containers - run manually:"
+        echo "  cd $WORKTREE_DIR && git wt-docker up -d"
     fi
+
+    cd - >/dev/null
 else
-    info "Docker directory not found - skipping dependency installation"
-    echo "  To install dependencies manually, run: git wt-docker $BRANCH_NAME && cd $DOCKER_DIR && task install-dep:crew-api"
+    if [ ! -d "$DOCKER_DIR" ]; then
+        info "Docker directory not found - skipping container setup"
+    fi
+    if [ ! -f "$TEMPLATE_FILE" ]; then
+        info "Docker template not found - skipping container setup"
+    fi
+    echo "  To set up Docker manually:"
+    echo "  cd $WORKTREE_DIR && git wt-docker init && git wt-docker up -d"
 fi
 
 echo ""
 success "All done!"
+echo ""
+echo "Worktree: $WORKTREE_DIR"
+echo "Branch:   $BRANCH_NAME"
+echo "Slug:     $BRANCH_SLUG"
+echo "URL:      https://api-${BRANCH_SLUG}.workyard.test"
 echo ""
 echo "Next steps:"
 echo "  cd $WORKTREE_DIR"

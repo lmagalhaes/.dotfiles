@@ -1,11 +1,30 @@
 #!/usr/bin/env bash
 # git-worktree-switch-docker - Switch Docker mount to different worktree
 #
+# DEPRECATED: This command switches all containers to one worktree at a time.
+# Use 'git wt-docker' instead for parallel worktree support where each
+# worktree gets its own isolated containers.
+#
 # Usage: git worktree-switch-docker <branch-name>
 #        git worktree-switch-docker main
 
 # Source common functions and variables
 source "$(dirname "$0")/git-worktree-common"
+
+# Show deprecation warning
+warning "DEPRECATED: git-worktree-switch-docker is deprecated."
+echo ""
+echo "This command switches ALL containers to a single worktree."
+echo "For parallel worktree support (recommended), use:"
+echo ""
+echo "  git wt-docker up -d       # Start containers for current worktree"
+echo "  git wt-docker status      # Show container status"
+echo "  git wt-docker exec ...    # Run commands in worktree containers"
+echo ""
+echo "Each worktree gets isolated containers at: api-{slug}.workyard.test"
+echo ""
+echo "Continuing with legacy behavior..."
+echo ""
 
 # Docker directory (hardcoded for crew-api, could be made generic later)
 DOCKER_DIR=~/workspace/workyard/dev-env/workyard-api
@@ -48,9 +67,9 @@ fi
 
 BRANCH=$1
 
-# Get repository root
+# Get repository root (use logical path for consistent absolute paths)
 check_git_repo
-REPO_ROOT=$(get_repo_root)
+REPO_ROOT=$(get_repo_root_logical)
 
 # Determine mount path and git directory
 if [ "$BRANCH" = "main" ] || [ "$BRANCH" = "." ]; then

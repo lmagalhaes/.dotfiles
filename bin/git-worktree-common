@@ -41,18 +41,128 @@ check_git_repo() {
     fi
 }
 
-# Get repository root (works from both main repo and worktrees)
-# Returns logical path (preserves symlinks)
-get_repo_root() {
-    dirname "$(git rev-parse --git-common-dir)"
-}
+# ============================================================================
+# Repository Root Path Resolution Methods
+# ============================================================================
+#
+# These functions return the repository root path, but behave differently.
+# Choose the right method for your use case:
+#
+# get_repo_root_physical() - Use for PATH COMPARISONS
+#   Returns: Always absolute path with symlinks resolved
+#   Use for: Comparing against 'git worktree list' output, path matching
+#   Example: Checking if current worktree is main repo
+#
+# get_repo_root_logical() - Use for USER DISPLAY and GENERAL USE
+#   Returns: Always absolute path preserving symlinks
+#   Use for: Error messages, info output, general path operations
+#   Example: Showing user-friendly paths in output
+#
+# WHY TWO METHODS?
+# ----------------
+# The naive approach (dirname "$(git rev-parse --git-common-dir)") returns
+# inconsistent results: '.' from main repo, absolute path from worktrees.
+# These functions always return absolute paths by using cd + pwd.
+#
+# EXAMPLES:
+# ---------
+# ✓ Comparing with git worktree list output:
+#     REPO_ROOT=$(get_repo_root_physical)
+#     if [ "$WORKTREE" = "$REPO_ROOT" ]; then ...
+#
+# ✓ Showing path to user:
+#     REPO_ROOT=$(get_repo_root_logical)
+#     error "Worktree not found: $REPO_ROOT/.worktrees/$BRANCH"
+#
+# For more details, see: ~/.dotfiles/.claude/docs/git-worktree-analysis-2026-01-20.md
+#
+# ============================================================================
 
-# Get physical repository root (resolves symlinks)
+# Get physical repository root (resolves all symlinks)
+# Returns: Always absolute path with symlinks resolved
+# Use for: Path comparisons, matching against git worktree list
 get_repo_root_physical() {
     cd "$(dirname "$(git rev-parse --git-common-dir)")" && pwd -P
 }
 
 # Get logical repository root (preserves symlinks)
+# Returns: Always absolute path preserving symlinks
+# Use for: User-facing messages, display, general path operations
 get_repo_root_logical() {
     cd "$(dirname "$(git rev-parse --git-common-dir)")" && pwd
+}
+
+# ============================================================================
+# Branch Slug Functions
+# ============================================================================
+#
+# These functions extract URL-safe slugs from branch names for use in
+# container names, hostnames, and compose file names.
+#
+# Naming convention:
+#   PLA-123-feature-name  → pla-123 (ticket prefix + number)
+#   WORK-456-something    → work-456
+#   feature-branch        → feature-branch (no ticket, use full name)
+#   hotfix/urgent-fix     → hotfix-urgent-fix (replace / with -)
+#
+# ============================================================================
+
+# Extract a URL-safe slug from a branch name
+# Usage: get_branch_slug "PLA-123-feature-name"  → "pla-123-feature-name"
+get_branch_slug() {
+    local branch="$1"
+    local slug
+
+    # Use full branch name, sanitized for URLs/containers
+    # - Lowercase
+    # - Replace / with -
+    # - Replace _ with -
+    # - Remove any characters that aren't alphanumeric or hyphen
+    slug=$(echo "$branch" | tr '[:upper:]' '[:lower:]' | tr '/_' '--' | sed 's/[^a-z0-9-]//g')
+
+    # Remove leading/trailing hyphens and collapse multiple hyphens
+    slug=$(echo "$slug" | sed 's/--*/-/g; s/^-//; s/-$//')
+
+    echo "$slug"
+}
+
+# Get the branch slug for the current worktree
+# Returns "main" if in main repo, otherwise the slug
+get_current_worktree_slug() {
+    local current_dir
+    local repo_root
+    local branch_name
+
+    current_dir=$(pwd -P)
+    repo_root=$(get_repo_root_physical)
+
+    # Check if we're in a worktree (inside .worktrees directory)
+    if [[ "$current_dir" == *"/.worktrees/"* ]]; then
+        # Extract branch name from path
+        # Path format: /path/to/repo/.worktrees/BRANCH-NAME/...
+        branch_name=$(echo "$current_dir" | sed -E 's|.*/\.worktrees/([^/]+).*|\1|')
+        get_branch_slug "$branch_name"
+    else
+        echo "main"
+    fi
+}
+
+# Get the current branch name (full name, not slug)
+get_current_branch_name() {
+    git rev-parse --abbrev-ref HEAD 2>/dev/null || echo "unknown"
+}
+
+# Check if current directory is inside a worktree
+is_in_worktree() {
+    local current_dir
+    current_dir=$(pwd -P)
+    [[ "$current_dir" == *"/.worktrees/"* ]]
+}
+
+# Get the worktree path for a given branch name
+get_worktree_path() {
+    local branch="$1"
+    local repo_root
+    repo_root=$(get_repo_root_logical)
+    echo "$repo_root/.worktrees/$branch"
 }

@@ -41,8 +41,8 @@ while [ $# -gt 0 ]; do
     esac
 done
 
-# Get repository root (works correctly from both main repo and worktrees)
-REPO_ROOT=$(get_repo_root)
+# Get repository root (use physical path for comparison with git worktree list output)
+REPO_ROOT=$(get_repo_root_physical)
 CURRENT_BRANCH=$(git branch --show-current)
 
 if [ "$DRY_RUN" = true ]; then

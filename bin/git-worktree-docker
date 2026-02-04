@@ -1,0 +1,159 @@
+#!/usr/bin/env bash
+# git-worktree-docker - Run docker commands in current worktree's containers
+#
+# Usage: git worktree-docker <docker-compose-command>
+#        git wt-docker up -d
+#        git wt-docker exec workyard-api php artisan migrate
+#        git wt-docker logs -f
+#        git wt-docker init
+#        git wt-docker status
+
+# Source common functions and variables
+source "$(dirname "$0")/git-worktree-common"
+
+# Docker directory (hardcoded for crew-api)
+DOCKER_DIR=~/workspace/workyard/dev-env/workyard-api
+TEMPLATE_FILE=~/.dotfiles/templates/compose.worktree.template.yaml
+
+# Show help
+show_help() {
+    echo "Usage: git worktree-docker <command> [args...]"
+    echo "       git wt-docker up -d"
+    echo "       git wt-docker exec workyard-api <command>"
+    echo ""
+    echo "Run docker compose commands in the current worktree's containers."
+    echo "Auto-detects which worktree you're in and uses the correct compose files."
+    echo ""
+    echo "Commands:"
+    echo "  up -d              Start containers for current worktree"
+    echo "  down               Stop containers for current worktree"
+    echo "  exec <svc> <cmd>   Run command in service container"
+    echo "  logs [-f]          View container logs"
+    echo "  ps                 List running containers"
+    echo "  init               Generate compose file for current worktree"
+    echo "  status             Show which containers are running"
+    echo ""
+    echo "Special commands:"
+    echo "  init               Generate compose.worktree.{slug}.yaml for current worktree"
+    echo "  status             Show current worktree's container status"
+    echo ""
+    echo "Examples:"
+    echo "  git wt-docker up -d"
+    echo "  git wt-docker exec workyard-api php artisan migrate"
+    echo "  git wt-docker exec workyard-api composer install"
+    echo "  git wt-docker logs -f nginx"
+    echo ""
+    echo "From main branch:"
+    echo "  Uses compose.override.yaml (existing behavior)"
+    echo ""
+    echo "From worktree:"
+    echo "  Uses compose.worktree.{slug}.yaml"
+    echo "  URL: https://api-{slug}.workyard.test"
+    exit 0
+}
+
+if [ $# -eq 0 ] || [ "$1" = "-h" ] || [ "$1" = "--help" ]; then
+    show_help
+fi
+
+# Check if in a git repository
+check_git_repo
+
+# Get current worktree slug
+BRANCH_SLUG=$(get_current_worktree_slug)
+BRANCH_NAME=$(get_current_branch_name)
+
+# Determine compose files and project name based on context
+if [ "$BRANCH_SLUG" = "main" ]; then
+    # Main branch uses existing compose.override.yaml
+    COMPOSE_FILES="-f docker-compose.yml -f compose.override.yaml"
+    PROJECT_NAME="workyard-api"
+    API_URL="https://api.workyard.test"
+else
+    # Worktrees use dedicated compose file
+    COMPOSE_FILE="$DOCKER_DIR/compose.worktree.${BRANCH_SLUG}.yaml"
+    COMPOSE_FILES="-f docker-compose.yml -f compose.worktree.${BRANCH_SLUG}.yaml"
+    PROJECT_NAME="workyard-api-${BRANCH_SLUG}"
+    API_URL="https://api-${BRANCH_SLUG}.workyard.test"
+fi
+
+# Handle special 'init' command - generate compose file for current worktree
+if [ "$1" = "init" ]; then
+    if [ "$BRANCH_SLUG" = "main" ]; then
+        info "Main branch uses compose.override.yaml - no init needed"
+        exit 0
+    fi
+
+    if [ ! -f "$TEMPLATE_FILE" ]; then
+        error "Template not found: $TEMPLATE_FILE"
+    fi
+
+    # Get worktree path for mount
+    REPO_ROOT=$(get_repo_root_logical)
+    WORKTREE_PATH=$(get_worktree_path "$BRANCH_NAME")
+
+    # Calculate relative mount path from docker directory
+    MOUNT_PATH="./crew-api/.worktrees/$BRANCH_NAME"
+    GIT_DIR="/opt/crew-api.git/worktrees/$BRANCH_NAME"
+
+    COMPOSE_FILE="$DOCKER_DIR/compose.worktree.${BRANCH_SLUG}.yaml"
+
+    info "Generating compose file for worktree: $BRANCH_NAME"
+    info "  Slug: $BRANCH_SLUG"
+    info "  Mount path: $MOUNT_PATH"
+    info "  Git dir: $GIT_DIR"
+
+    # Generate compose file from template
+    sed -e "s|{{SLUG}}|${BRANCH_SLUG}|g" \
+        -e "s|{{BRANCH_NAME}}|${BRANCH_NAME}|g" \
+        -e "s|{{MOUNT_PATH}}|${MOUNT_PATH}|g" \
+        -e "s|{{GIT_DIR}}|${GIT_DIR}|g" \
+        "$TEMPLATE_FILE" > "$COMPOSE_FILE"
+
+    success "Compose file created: $COMPOSE_FILE"
+    echo ""
+    echo "Next steps:"
+    echo "  git wt-docker up -d          # Start containers"
+    echo "  git wt-docker exec workyard-api composer install"
+    echo ""
+    echo "URL: $API_URL"
+    exit 0
+fi
+
+# Handle special 'status' command
+if [ "$1" = "status" ]; then
+    echo "Current context:"
+    echo "  Branch: $BRANCH_NAME"
+    echo "  Slug: $BRANCH_SLUG"
+    echo "  Project: $PROJECT_NAME"
+    echo "  URL: $API_URL"
+    echo ""
+
+    if [ "$BRANCH_SLUG" != "main" ]; then
+        COMPOSE_FILE="$DOCKER_DIR/compose.worktree.${BRANCH_SLUG}.yaml"
+        if [ -f "$COMPOSE_FILE" ]; then
+            echo "Compose file: $COMPOSE_FILE"
+        else
+            warning "Compose file not found - run 'git wt-docker init' to create it"
+            exit 1
+        fi
+    fi
+
+    echo ""
+    echo "Container status:"
+    cd "$DOCKER_DIR"
+    docker compose $COMPOSE_FILES --project-name "$PROJECT_NAME" ps 2>/dev/null || echo "  No containers running"
+    exit 0
+fi
+
+# For worktrees, check if compose file exists
+if [ "$BRANCH_SLUG" != "main" ]; then
+    COMPOSE_FILE="$DOCKER_DIR/compose.worktree.${BRANCH_SLUG}.yaml"
+    if [ ! -f "$COMPOSE_FILE" ]; then
+        error "Compose file not found: $COMPOSE_FILE\nRun 'git wt-docker init' to generate it"
+    fi
+fi
+
+# Execute docker compose command
+cd "$DOCKER_DIR"
+exec docker compose $COMPOSE_FILES --project-name "$PROJECT_NAME" "$@"
