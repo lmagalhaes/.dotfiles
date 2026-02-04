@@ -84,11 +84,21 @@ export GIT_PS1_SHOWDIRTYSTATE=true
 export GIT_PS1_SHOWUNTRACKEDFILES=true
 export GIT_PS1_SHOWCOLORHINTS=true
 
-PS1="$COLOR_GREEN\u"
+# Function to shorten workspace paths
+_shorten_pwd() {
+    local pwd="$PWD"
+    pwd="${pwd/#$HOME\/workspace\/lmagalhaes/@lm}"
+    pwd="${pwd/#$HOME\/workspace\/workyard/@wy}"
+    pwd="${pwd/#$HOME/~}"
+    echo "$pwd"
+}
+
+PS1='$(if [ $? -eq 0 ]; then echo "'$COLOR_GREEN'✓"; else echo "'$COLOR_RED'✗"; fi)'
+PS1+=" $COLOR_GREEN\u"
 PS1+="@$COLOR_CYAN\h"
-PS1+=":$COLOR_LIGHT_BLUE\w"
-PS1+="$COLOR_YELLOW "'$(__git_ps1 "[ %s ]")'
-PS1+="$COLOR_NC\$ "
+PS1+=":$COLOR_LIGHT_BLUE"'$(_shorten_pwd)'
+PS1+="$COLOR_YELLOW "'$(__git_ps1 " [ %s ]")'
+PS1+="\n$COLOR_NC\$ "
 
 export BUILDKIT_PROGRESS=plain
 
@@ -103,5 +113,15 @@ source "$HOME/.orbstack/shell/init.bash" 2>/dev/null || :
 
 #### WORKYARD CONFIG
 export PATH="/opt/homebrew/opt/mysql@8.0/bin:$PATH"
-export PATH="$HOME/.composer/vendor/bin:$PATH"
-export PATH="$HOME/workspace/workyard/crew-api/vendor/bin:$PATH" 
+
+PATH="$HOME/bin:$HOME/workspace/lmagalhaes/flux:$HOME/workspace/lmagalhaes/bin:$PATH"
+_FLUX_COMPLETE=bash_source flux > ~/.bash_completion.d/flux
+
+eval "$(orb completion bash)"
+
+for completion_file in ~/.bash_completion.d/*; do
+    [ -f "$completion_file" ] && source "$completion_file"
+done
+
+export SSH_OPTS="-o StrictHostKeyChecking=accept-new"
+export PATH="$HOME/.local/bin:$PATH"
