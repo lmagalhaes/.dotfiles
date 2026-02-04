@@ -31,7 +31,7 @@ fi
 source "$PROJECT_FILE"
 
 # Session name
-session="dev-${PROJECT_NAME}"
+session="${PROJECT_NAME}"
 
 # Helper functions
 window_exists() {
@@ -54,8 +54,6 @@ tmux rename-window -t "$session:1" "editor" 2>/dev/null || true
 
 # 3) Create standard windows (unless disabled)
 [ "${SKIP_RUNTIME:-false}" != "true" ] && ensure_window "runtime" "$PROJECT_ROOT" "$PROJECT_CMD"
-[ "${SKIP_LOGS:-false}" != "true" ] && ensure_window "logs" "$PROJECT_ROOT" "tail -f logs/* 2>/dev/null || clear"
-[ "${SKIP_SHELL:-false}" != "true" ] && ensure_window "shell" "$PROJECT_ROOT"
 
 # 4) Split editor window if needed (only if 1 pane)
 if [ "$(tmux list-panes -t "$session:editor" 2>/dev/null | wc -l | tr -d ' ')" = "1" ]; then

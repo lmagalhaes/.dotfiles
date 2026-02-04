@@ -12,7 +12,12 @@
       "Bash(pwd:*)",
       "Read(/Users/lmagalhaes/.claude/contexts/*)",
       "Read(/Users/lmagalhaes/.claude/sessions/*)",
-      "Read(/Users/lmagalhaes/.dotfiles/.claude/sessions/*)"
+      "Read(/Users/lmagalhaes/.dotfiles/.claude/sessions/*)",
+      "Bash(~/.claude/scripts/load-session.sh:*)",
+      "Bash(~/.claude/scripts/wrap-session.sh env:*)",
+      "Bash(~/.claude/scripts/wrap-session.sh:*)",
+      "Bash(docker ps:*)",
+      "Bash(git wt-docker:*)"
     ]
   }
 }
