@@ -1,0 +1,6 @@
+[user]
+    name = Your Name
+    email = you@example.com
+    # signingkey = ssh-ed25519 AAAA... (optional)
+
+# Add provider-specific tweaks below (e.g., url.insteadOf, commit templates)

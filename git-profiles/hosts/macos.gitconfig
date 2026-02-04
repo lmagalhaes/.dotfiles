@@ -1,0 +1,6 @@
+[credential]
+    helper = osxkeychain
+
+# Uncomment if you use GPG signing and installed via Homebrew
+# [gpg]
+#     program = /opt/homebrew/bin/gpg

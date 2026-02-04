@@ -1,15 +1,8 @@
-[user]
-    name = Leandro Magalhães
-    email = le.fatecpd@gmail.com
-
 [core]
-    excludesfile = ~/.dotfiles/gitconfig/.gitignore
+    excludesfile = ~/.dotfiles/git-profiles/gitignore.global
 
 [init]
     defaultBranch = main
-
-[includeIf "gitdir:~/workspace/workyard/"]
-    path = ~/.dotfiles/gitconfig/workyard
 
 [rerere]
     enabled = true
@@ -46,7 +39,10 @@
     wt-ls = !git-worktree-list
     wt-cleanup = !git-worktree-cleanup
     wt-rm = !git-worktree-remove
-    wt-docker = !git-worktree-switch-docker
+    # Docker commands for worktrees (parallel container support)
+    wt-docker = !git-worktree-docker
+    # Legacy: switch all containers to single worktree (deprecated)
+    wt-switch-docker = !git-worktree-switch-docker
 
 [filter "lfs"]
     smudge = git-lfs smudge -- %f
