@@ -81,18 +81,30 @@ Verify work is committed, safely exit the worktree, and delete it. This command 
    - If no output:
      - Display: "✓ Working tree clean"
 
-### 4. Exit Worktree:
+### 4. Update Docs Index:
+   - Find project root: `~/.claude/scripts/project-docs.sh root`
+   - Check if `{project_root}/.claude/docs/index.md` exists
+   - If it exists:
+     - Read the file
+     - Find the entry for `[branch-name]` under `## Active Worktrees`
+     - If found: move the line to `## Completed Worktrees` (create section if missing) and append ` ✓`
+     - Update the `_Last updated_` date
+     - Write the file back
+   - If index doesn't exist or entry not found: skip silently (not fatal)
+   - Display: "✓ Docs index updated"
+
+### 5. Exit Worktree:
    - Change directory: `cd [parent-repo-path]`
    - Verify successful cd: `pwd -P`
    - Display: "✓ Exited worktree"
 
-### 5. Delete Worktree:
+### 6. Delete Worktree:
    - Use git wt-* alias: `git wt-rm [branch-name]`
    - Wait for deletion to complete
    - Verify deletion: `git worktree list` (worktree should be gone)
    - Display: "✓ Worktree deleted"
 
-### 6. Final Summary:
+### 7. Final Summary:
    ```
    ✅ Cleanup complete!
 

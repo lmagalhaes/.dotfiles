@@ -118,10 +118,7 @@ Create or switch to a worktree for the specified ticket, fetch context from Line
 
 ### 9. Analyze Ticket and Create Documentation:
 
-   **Display:** "🔍 Analyzing ticket... (this may take 15-30 seconds)"
-
-   **Create documentation directory:**
-   - Create `.claude/docs/` if doesn't exist: `mkdir -p .claude/docs`
+   **Display:** "🔍 Analyzing ticket..."
 
    **Analyze the ticket (do this yourself, don't spawn agent for Phase 1):**
    - Read the ticket description carefully
@@ -132,52 +129,58 @@ Create or switch to a worktree for the specified ticket, fetch context from Line
    - Identify potentially affected systems/files
    - Extract important technical details
 
-   **Write documentation file:**
-   - File path: `.claude/docs/[branch-name].md`
-   - Use this template structure:
+   **Initialize docs structure using script:**
+   ```bash
+   ~/.claude/scripts/init-worktree-docs.sh \
+     "[branch-name]" \
+     "[TICKET_ID]" \
+     "[Title]" \
+     "[Status]" \
+     "[Linear URL]" \
+     "[1-2 sentence summary from your analysis]"
+   ```
+
+   The script automatically:
+   - Creates `.claude/docs/{branch}/` directory structure
+   - Generates `index.md` with ticket metadata
+   - Updates master docs index
+   - Creates symlink in worktree
+   - Scans codebase for existing ticket references
+
+   **Enhance the generated docs with your analysis:**
+   - Get docs path: `DOCS_DIR="$(~/.claude/scripts/project-docs.sh docs-dir)"`
+   - Read the generated index: `cat ${DOCS_DIR}/[branch-name]/index.md`
+   - Append these sections (using Edit tool):
 
    ```markdown
-   # [TICKET_ID]: [Title]
-
-   **Created:** [Current date YYYY-MM-DD]
-   **Estimate:** [Size] | **Priority:** [Priority] | **Status:** [Status]
-   **Assignee:** [Name]
-   **Linear:** [URL]
-
-   ## Summary
-   [2-3 sentence summary of what needs to be done]
-
    ## Requirements
-   [Numbered list of key requirements/deliverables]
+   [Numbered list of key requirements/deliverables from Linear description]
 
    ## Tasks
-   [Checkbox list of actionable tasks]
    - [ ] Task 1
    - [ ] Task 2
    - [ ] Task 3
 
    ## Dependencies/Blockers
-   [List any dependencies, blockers, or questions]
-   - Dependency 1
-   - Question: [Unclear requirement?]
+   - Dependency 1 (if any)
+   - Question: [Unclear requirement?] (if any)
 
    ## Key Files/Systems
-   [List systems, files, or components likely to be affected]
-   - System/file 1
+   - System/file 1 (based on your analysis)
    - System/file 2
 
    ## Technical Notes
-   [Important technical details, constraints, or considerations]
+   [Important technical details, constraints, or considerations from your analysis]
 
    ## References
-   [External links from ticket description]
-   - [Link title](URL)
+   - [Link title](URL) (if relevant links in Linear description)
    ```
 
    **Show progress:**
-   - "✓ Analysis complete! Documentation saved to `.claude/docs/[branch-name].md`"
+   - "✓ Documentation initialized at `.claude/docs/[branch-name]/index.md`"
    - Show task count: "📝 [N] tasks identified"
    - Flag if blockers found: "⚠️ [N] potential blockers identified"
+   - If script found existing references: "💡 Found existing code referencing this ticket"
 
 ### 10. Ask About Docker:
    - Ask user: "Switch Docker containers to this worktree? (This will restart containers)"
@@ -191,14 +194,14 @@ Create or switch to a worktree for the specified ticket, fetch context from Line
    Working directory: .worktrees/[branch-name]
    Branch: [branch-name]
    Ticket: [TICKET_ID] - [Title]
-   Documentation: .claude/docs/[branch-name].md
+   Documentation: .claude/docs/[branch-name]/index.md
 
    🎯 Quick Start:
    - [N] tasks identified (see docs for details)
    - [Key insight or first step from analysis]
 
    Next steps:
-   - Review documentation: cat .claude/docs/[branch-name].md
+   - Review documentation: cat .claude/docs/[branch-name]/index.md
    - Start coding!
    - When done, use '/finish-ticket' to clean up
    ```
@@ -220,7 +223,7 @@ Create or switch to a worktree for the specified ticket, fetch context from Line
 - **Branch already exists:** If branch exists but not as worktree, error and suggest cleanup
 - **Main branch outdated:** If local main is behind origin, fetch first
 - **No Linear access:** If MCP tools unavailable, error with helpful message
-- **Documentation file already exists:** Overwrite with fresh analysis (ticket may have been updated)
+- **Documentation folder already exists:** Overwrite `index.md` with fresh analysis (ticket may have been updated); preserve any other files in the folder
 - **Empty ticket description:** Note it in documentation and ask user for clarification
 
 ## Important Notes:

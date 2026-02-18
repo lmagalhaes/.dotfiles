@@ -18,36 +18,10 @@
 
 set -e
 
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)"
+source "${SCRIPT_DIR}/_git-helpers.sh"
+
 MODE="${1:-env}"
-
-# Find sessions directory
-find_sessions_dir() {
-  if git rev-parse --is-inside-work-tree &>/dev/null; then
-    REPO_ROOT="$(cd "$(dirname "$(git rev-parse --git-common-dir)")" && pwd -P)"
-    echo "$REPO_ROOT/.claude/sessions"
-  else
-    echo "$(pwd -P)/.claude/sessions"
-  fi
-}
-
-# Get git info
-get_git_info() {
-  if git rev-parse --is-inside-work-tree &>/dev/null; then
-    BRANCH=$(git branch --show-current 2>/dev/null || echo "")
-    GIT_DIR=$(git rev-parse --git-dir 2>/dev/null)
-    COMMON_DIR=$(git rev-parse --git-common-dir 2>/dev/null)
-    
-    # Is worktree if git-dir != git-common-dir
-    if [ "$GIT_DIR" != "$COMMON_DIR" ] && [ "$GIT_DIR" != ".git" ]; then
-      IS_WORKTREE=true
-    else
-      IS_WORKTREE=false
-    fi
-  else
-    BRANCH=""
-    IS_WORKTREE=false
-  fi
-}
 
 case "$MODE" in
   env)

@@ -123,7 +123,34 @@ The script will:
 - Update index.json
 - Return success confirmation
 
-### 5. Create Task Context (Optional)
+### 5. Update Per-Worktree Docs Index (If In Worktree)
+
+Skip this step if `is_worktree` is false.
+
+```bash
+DOCS_DIR="$(~/.claude/scripts/project-docs.sh docs-dir)"
+BRANCH="$(~/.claude/scripts/project-docs.sh worktree)"
+INDEX_FILE="${DOCS_DIR}/${BRANCH}/index.md"
+```
+
+If `$INDEX_FILE` exists:
+- List all files in `${DOCS_DIR}/${BRANCH}/` except `index.md`
+- Read the current `index.md`
+- Find the `## Additional Files` section; if missing, append it at the end
+- Replace (or write) that section with the current file list:
+
+  ```markdown
+  ## Additional Files
+  _Updated: YYYY-MM-DD_
+  - `filename.md` - (add a one-line description if inferrable from filename, otherwise leave blank)
+  ```
+
+- Write the file back
+- Display: "✓ Docs index updated (`{BRANCH}/index.md`)"
+
+If no files exist beyond `index.md`, skip silently.
+
+### 6. Create Task Context (Optional)
 
 Write a compressed context file for Task agents:
 
@@ -152,7 +179,7 @@ Content:
 {top 3 gotchas}
 ```
 
-### 6. Display Summary
+### 7. Display Summary
 
 Show the user:
 ```markdown

@@ -7,15 +7,13 @@
 
 set -e
 
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)"
+source "${SCRIPT_DIR}/_git-helpers.sh"
+
 LIMIT="${1:-10}"
 [ "$LIMIT" = "all" ] && LIMIT=9999
 
-# Find sessions directory
-if git rev-parse --is-inside-work-tree &>/dev/null; then
-  SESSIONS_DIR="$(cd "$(dirname "$(git rev-parse --git-common-dir)")" && pwd -P)/.claude/sessions"
-else
-  SESSIONS_DIR="$(pwd -P)/.claude/sessions"
-fi
+SESSIONS_DIR="$(find_sessions_dir)"
 
 # Check directory exists
 if [ ! -d "$SESSIONS_DIR" ]; then

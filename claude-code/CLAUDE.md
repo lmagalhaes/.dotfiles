@@ -341,6 +341,23 @@ When working in a project directory:
 4. **Ask when uncertain** - Don't assume requirements
 5. **Load appropriate contexts** - Read language/domain-specific context files as needed
 
+### Efficiency Guidelines (Token Optimization)
+
+**Gather context efficiently:**
+- Read necessary files upfront in parallel (not one-by-one)
+- Use Grep/Glob directly for simple, targeted queries
+- Use Task agents only for exploration (10+ search attempts expected)
+
+**Respond efficiently:**
+- Be complete but concise - explain once, thoroughly
+- Keep responses focused on current task
+- Exit sessions promptly when tasks complete (use `/wrap-session`)
+
+**Avoid inefficiency:**
+- Don't make serial tool calls that could be parallel
+- Don't over-use Task agents for simple queries
+- Don't give terse answers that need follow-up clarification
+
 ### When Suggesting Improvements
 - ✅ Suggest if related to current task
 - ✅ Suggest if significantly improves code quality
@@ -353,6 +370,69 @@ When working in a project directory:
 - Keep project docs current
 - Document learnings after significant work
 - Maintain `.claude/` directory structure in projects
+
+### Documentation Management (Worktree-Aware)
+
+**Always save docs to the project root**, not the current working directory:
+
+```bash
+# Find project root from anywhere (main branch or any worktree)
+PROJECT_ROOT="$(~/.claude/scripts/project-docs.sh root)"
+DOCS_DIR="$(~/.claude/scripts/project-docs.sh docs-dir)"   # = $PROJECT_ROOT/.claude/docs
+WORKTREE="$(~/.claude/scripts/project-docs.sh worktree)"   # branch name, empty if main
+```
+
+**Directory structure:**
+```
+{project_root}/.claude/docs/
+├── index.md                  # Master index - always keep current
+├── shared/                   # Project-wide knowledge (patterns, ADRs, gotchas)
+└── {branch-name}/            # Per-worktree docs (created by /start-ticket)
+    ├── index.md              # Ticket metadata + file list
+    └── ...topic files...
+```
+
+**Rules:**
+- Worktree docs → `{docs_dir}/{branch-name}/`
+- Main branch docs → `{docs_dir}/` directly
+- Non-git projects → `{cwd}/.claude/docs/`
+- Always update `index.md` when creating or completing a docs folder
+
+**Master index format** (`{docs_dir}/index.md`):
+```markdown
+# Project Docs Index
+_Last updated: YYYY-MM-DD_
+
+## Active Worktrees
+- **[{branch}/]({branch}/)** `TICKET-ID` - Brief summary
+
+## Completed Worktrees
+- **[{branch}/]({branch}/)** `TICKET-ID` - Brief summary ✓
+
+## Shared
+- [shared/](shared/) - Project-wide knowledge
+```
+
+**Per-worktree index format** (`{docs_dir}/{branch}/index.md`):
+Start with ticket metadata (ID, status, Linear URL), then a 1–2 sentence summary, then a file list with one-line descriptions.
+
+### Context Management (Reactive)
+
+**Respond to system warnings:**
+- When you see token usage >35k in system warning, mention: "⚠️ High token usage ({tokens}k) - consider `/session-status` to check session health"
+- When you see token usage >80k, suggest: "📦 Consider `/wrap-session` and starting fresh - currently at {tokens}k"
+
+**Guide session hygiene:**
+- If user completes a task (merged PR, closed ticket), suggest: "✅ Task complete! Consider wrapping: `/wrap-session` then `Ctrl+D`"
+- If user switches to unrelated codebase mid-session, note: "💡 Different context - consider fresh session for clarity"
+
+**Project memory hygiene:**
+- When reading MEMORY.md >120 lines, suggest: "📝 Project memory is large ({count} lines). Consider moving old patterns to MEMORY-ARCHIVE.md"
+- When creating new memories, prioritize recent patterns over old ones
+
+**Cost awareness:**
+- When suggesting Task agents for exploration, mention: "💰 Task agent keeps research out of main context"
+- Remind about session costs only when relevant, not constantly
 
 ---
 
@@ -560,6 +640,13 @@ See `~/.claude/commands/README.md` for detailed documentation.
 ---
 
 ## Changelog
+
+**v2.3** - 2026-02-12
+- 🔧 **Context Management Fix:** Changed "Proactive" to "Reactive" - removed unimplementable instructions
+- **Realistic expectations:** Claude cannot count messages or track token usage proactively
+- **System warning triggers:** Now respond to visible token warnings (>35k, >80k)
+- **Efficiency Guidelines:** Added consolidated token optimization section
+- **Task completion focus:** Optimize for completing tasks efficiently, not message brevity
 
 **v2.2** - 2026-01-19
 - ⚡ **Session Management Optimization:** 85-90% token reduction achieved
