@@ -76,6 +76,45 @@ Automatically updates the file list in a worktree's docs index.md.
 
 **Token savings:** ~5k tokens per wrap-session cycle by automating file list updates
 
+### docs-search.sh
+
+Search across all worktree documentation directories for patterns.
+
+```bash
+# Search all worktrees
+~/.claude/scripts/docs-search.sh "pattern"
+
+# Filter by status
+~/.claude/scripts/docs-search.sh "API endpoint" --active
+~/.claude/scripts/docs-search.sh "migration" --completed
+
+# Search specific branch
+~/.claude/scripts/docs-search.sh "auth" --branch PLA-123-feature
+
+# Case insensitive with context
+~/.claude/scripts/docs-search.sh -i "error" -C 3
+```
+
+**Options:**
+- `--active` - Only search active worktrees
+- `--completed` - Only search completed worktrees
+- `--all` - Search all worktrees (default)
+- `--branch NAME` - Search specific branch only
+- `--no-shared` - Exclude shared/ directory
+- `-i, --ignore-case` - Case insensitive search
+- `-C NUM` - Lines of context (default: 2)
+
+**Features:**
+- Groups results by worktree/branch
+- Shows ticket IDs from index.md
+- Includes line numbers and context
+- Searches markdown files in .claude/docs/
+
+**Use cases:**
+- Find where a specific pattern was used before
+- Locate decisions made in previous tickets
+- Search for similar implementations across worktrees
+
 ## Benefits
 
 | Before (Claude only) | After (Hybrid) |
