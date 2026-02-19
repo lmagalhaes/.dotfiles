@@ -66,7 +66,7 @@ then
     complete -C '/opt/homebrew/bin/aws_completer' aws
 fi;
 
-source $HOME/.dotfiles/aliases
+source $HOME/.aliases
 
 if [ -d "$HOME/.bash/" ];
 then

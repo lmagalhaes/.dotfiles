@@ -27,7 +27,7 @@ set smartcase           " Case sensitive when uppercase present
 set backspace=indent,eol,start  " Backspace behavior
 set encoding=utf-8      " UTF-8 encoding
 set scrolloff=3         " Keep 3 lines visible above/below cursor
-set clipboard=unnamedplus   " Use system clipboard (macOS)
+" set clipboard=unnamedplus   " Use system clipboard (macOS)
 
 " Visual
 syntax on               " Enable syntax highlighting
@@ -99,3 +99,17 @@ set novisualbell
 " Git commit message helper
 autocmd FileType gitcommit call setpos('.', [0, 1, 1, 0])  " Start at the top
 autocmd FileType gitcommit setlocal spell spelllang=en_us  " Spell check
+
+" Set FZF to use ripgrep (rg) for file searching
+let $FZF_DEFAULT_COMMAND = 'rg --files --hidden --follow -g "!{.git,node_modules}/*"'
+
+let g:fzf_layout = { 'window': { 'width': 0.9, 'height': 0.6, 'relative': v:true } }
+
+let mapleader = " "
+nnoremap <Leader>r :source $MYVIMRC<CR>
+" Plug 'junegunn/fzf' is the 'native' plugin that comes with the fzf repo
+" Plug 'junegunn/fzf.vim' is an additional plugin with more commands/options
+call plug#begin('~/.vim/plugged')
+Plug 'junegunn/fzf', { 'do': { -> fzf#install() } }
+Plug 'junegunn/fzf.vim'
+call plug#end()
