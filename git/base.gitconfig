@@ -1,5 +1,5 @@
 [core]
-    excludesfile = ~/.dotfiles/git-profiles/gitignore.global
+    excludesfile = ~/.dotfiles/git/gitignore.global
 
 [init]
     defaultBranch = main

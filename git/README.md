@@ -13,20 +13,20 @@ Modular Git config with visible filenames: shared defaults, per-profile identiti
 1) Backup your existing `~/.gitconfig` if present.  
 2) Symlink the entrypoint:
 ```bash
-ln -sfn ~/.dotfiles/gitconfig/main.gitconfig ~/.gitconfig
+ln -sfn ~/.dotfiles/git/main.gitconfig ~/.gitconfig
 ```
 3) Add or edit profiles under `profiles/` as needed.
 
 ## Adding a profile
 1) Copy the template:  
 ```bash
-cp ~/.dotfiles/gitconfig/profiles/profile-template.gitconfig ~/.dotfiles/gitconfig/profiles/client-foo.gitconfig
+cp ~/.dotfiles/git/profiles/profile-template.gitconfig ~/.dotfiles/git/profiles/client-foo.gitconfig
 ```
 2) Fill in `[user]` (and signing key, if used).  
 3) Add an `includeIf` in `main.gitconfig`, e.g.:
 ```ini
 [includeIf "gitdir:~/workspace/client-foo/"]
-    path = ~/.dotfiles/gitconfig/profiles/client-foo.gitconfig
+    path = ~/.dotfiles/git/profiles/client-foo.gitconfig
 ```
 
 ## Optional per-host overrides

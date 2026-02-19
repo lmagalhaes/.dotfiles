@@ -1,0 +1,21 @@
+[include]
+    path = ~/.dotfiles/git/base.gitconfig
+
+[include]
+    path = ~/.dotfiles/git/profiles/personal.gitconfig
+
+[includeIf "gitdir:~/workspace/workyard/"]
+    path = ~/.dotfiles/git/profiles/workyard.gitconfig
+
+# Host-specific overrides for this Mac
+[includeIf "gitdir:~/"]
+    path = ~/.dotfiles/git/hosts/macos.gitconfig
+
+# Optional host-specific overrides (uncomment and create the file)
+# [includeIf "hasconfig:remote.*.url:git@github.com:client-foo/**"]
+#     path = ~/.dotfiles/git/profiles/client-foo.gitconfig
+
+# [includeIf "onbranch:release/*"]
+#     path = ~/.dotfiles/git/hosts/$(hostname).gitconfig
+[core]
+	excludesfile = /Users/lmagalhaes/.config/git/ignore
