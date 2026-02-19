@@ -1,18 +1,12 @@
 {
   "$schema": "https://json.schemastore.org/claude-code-settings.json",
-  "includeCoAuthoredBy": false,
-  "hooks": {
-    "SessionEnd": [
-      {
-        "hooks": [
-          {
-            "type": "command",
-            "command": "bash -c 'INPUT=$(cat); SID=$(echo \"$INPUT\" | jq -r \".session_id // empty\"); CWD=$(echo \"$INPUT\" | jq -r \".cwd // empty\"); [ -n \"$SID\" ] && rm -f \"/tmp/claude-cwd-${SID}\"; [ -n \"$CWD\" ] && [ -f /tmp/claude-sessions.json ] && jq --arg dir \"$CWD\" \"del(.[\\$dir])\" /tmp/claude-sessions.json > /tmp/claude-sessions.json.tmp && mv /tmp/claude-sessions.json.tmp /tmp/claude-sessions.json'"
-          }
-        ]
-      }
-    ]
+  "env": {
+    "CLAUDE_CODE_USE_BEDROCK": "1",
+    "AWS_DEFAULT_REGION": "us-west-2",
+    "ANTHROPIC_MODEL": "arn:aws:bedrock:us-west-2:757844747633:inference-profile/global.anthropic.claude-sonnet-4-5-20250929-v1:0",
+    "ANTHROPIC_SMALL_FAST_MODEL": "arn:aws:bedrock:us-west-2:757844747633:inference-profile/global.anthropic.claude-haiku-4-5-20251001-v1:0"
   },
+  "includeCoAuthoredBy": false,
   "permissions": {
     "allow": [
       "Bash(~/.claude/set-cwd.sh *)",
@@ -48,15 +42,26 @@
       "Write(**/.claude/sessions/**)"
     ]
   },
-  "model": "opus",
+  "hooks": {
+    "SessionEnd": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash -c 'INPUT=$(cat); SID=$(echo \"$INPUT\" | jq -r \".session_id // empty\"); CWD=$(echo \"$INPUT\" | jq -r \".cwd // empty\"); [ -n \"$SID\" ] && rm -f \"/tmp/claude-cwd-${SID}\"; [ -n \"$CWD\" ] && [ -f /tmp/claude-sessions.json ] && jq --arg dir \"$CWD\" \"del(.[\\$dir])\" /tmp/claude-sessions.json > /tmp/claude-sessions.json.tmp && mv /tmp/claude-sessions.json.tmp /tmp/claude-sessions.json'"
+          }
+        ]
+      }
+    ]
+  },
   "statusLine": {
     "type": "command",
     "command": "bash ~/.claude/statusline-command.sh"
   },
-  "feedbackSurveyState": {
-    "lastShownTime": 1754024052158
-  },
   "enabledPlugins": {
     "coderabbit@claude-plugins-official": true
+  },
+  "feedbackSurveyState": {
+    "lastShownTime": 1754024052158
   }
 }

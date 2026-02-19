@@ -17,7 +17,8 @@
       "Bash(~/.claude/scripts/wrap-session.sh env:*)",
       "Bash(~/.claude/scripts/wrap-session.sh:*)",
       "Bash(docker ps:*)",
-      "Bash(git wt-docker:*)"
+      "Bash(git wt-docker:*)",
+      "Bash(wc:*)"
     ]
   }
 }
