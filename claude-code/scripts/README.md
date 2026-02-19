@@ -56,6 +56,26 @@ echo '{"session_id":...}' | ~/.claude/scripts/wrap-session.sh save
 
 **Save:** Writes session file, updates index.json, returns success confirmation
 
+### refresh-worktree-index.sh
+
+Automatically updates the file list in a worktree's docs index.md.
+
+```bash
+# Auto-detect branch from current directory
+~/.claude/scripts/refresh-worktree-index.sh
+
+# Specify branch explicitly
+~/.claude/scripts/refresh-worktree-index.sh PLA-123-feature
+```
+
+**Features:**
+- Scans worktree docs directory for markdown files (excludes index.md)
+- Extracts descriptions from first H1 heading or first paragraph
+- Updates "## Files" section in index.md with formatted list
+- Preserves ticket metadata and other sections
+
+**Token savings:** ~5k tokens per wrap-session cycle by automating file list updates
+
 ## Benefits
 
 | Before (Claude only) | After (Hybrid) |

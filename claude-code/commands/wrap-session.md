@@ -125,30 +125,23 @@ The script will:
 
 ### 5. Update Per-Worktree Docs Index (If In Worktree)
 
-Skip this step if `is_worktree` is false.
+If `is_worktree` is true, refresh the file list in the worktree's docs index:
 
 ```bash
-DOCS_DIR="$(~/.claude/scripts/project-docs.sh docs-dir)"
-BRANCH="$(~/.claude/scripts/project-docs.sh worktree)"
-INDEX_FILE="${DOCS_DIR}/${BRANCH}/index.md"
+~/.claude/scripts/refresh-worktree-index.sh
 ```
 
-If `$INDEX_FILE` exists:
-- List all files in `${DOCS_DIR}/${BRANCH}/` except `index.md`
-- Read the current `index.md`
-- Find the `## Additional Files` section; if missing, append it at the end
-- Replace (or write) that section with the current file list:
+The script will:
+- Auto-detect the current branch
+- Scan for markdown files in the worktree's docs directory
+- Extract descriptions from each file (first H1 or paragraph)
+- Update the "## Files" section in index.md
 
-  ```markdown
-  ## Additional Files
-  _Updated: YYYY-MM-DD_
-  - `filename.md` - (add a one-line description if inferrable from filename, otherwise leave blank)
-  ```
+If the script succeeds, output will show:
+- "✓ Updated file list in: {path}/index.md"
+- Count of files indexed
 
-- Write the file back
-- Display: "✓ Docs index updated (`{BRANCH}/index.md`)"
-
-If no files exist beyond `index.md`, skip silently.
+If script fails (no docs directory, not in worktree), skip silently - this is not critical.
 
 ### 6. Create Task Context (Optional)
 
