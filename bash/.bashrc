@@ -125,3 +125,4 @@ done
 
 export SSH_OPTS="-o StrictHostKeyChecking=accept-new"
 export PATH="$HOME/.local/bin:$PATH"
+eval "$(zoxide init bash)"

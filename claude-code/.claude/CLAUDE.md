@@ -334,6 +334,84 @@ When working in a project directory:
 - ⚠️ "How does auth work across our apps?" → Ask for confirmation before searching multiple projects
 - ✅ "Compare this with crew-runtime's approach" → Explicitly allows cross-project access
 
+### Performance Tools Preferences
+
+When using the Bash tool, **always prefer** these installed performance tools over standard Unix utilities:
+
+**File/Content Search:**
+- ✅ Use `rg` (ripgrep) instead of `grep` - Faster, smarter defaults, respects .gitignore
+- ✅ Use `fd` instead of `find` - Faster, simpler syntax, respects .gitignore
+- ✅ Use `fzf` for interactive selection when appropriate
+
+**File Display:**
+- ✅ Use `bat` instead of `cat` - Syntax highlighting, git integration, auto-paging
+- ✅ Use `eza` instead of `ls` - Color coding, git status, icons, tree view
+- ✅ Use `tree` for deep directory visualization (eza has built-in tree too)
+
+**Navigation:**
+- ✅ Use `zoxide` (z) for smart directory jumping - Learns most-used paths
+  ```bash
+  z crew     # Jumps to ~/workspace/workyard/crew-api
+  z api wt   # Jumps to crew-api/.worktrees/...
+  ```
+
+**Monitoring & Display:**
+- ✅ Use `htop` instead of `top` - Better visualization and interaction
+- ✅ Use `duf` instead of `df` - Colorful disk usage, clearer output
+- ✅ Use `pv` for progress monitoring in pipes (e.g., `pv file.tar.gz | tar xz`)
+
+**Git:**
+- ✅ Use `delta` as git pager - Syntax-highlighted diffs, side-by-side view
+  ```bash
+  git config --global core.pager delta
+  ```
+
+**Data Processing:**
+- ✅ Use `jq` for JSON parsing/manipulation (not `grep`, `sed`, or `awk`)
+- ✅ Use `yq` for YAML parsing/manipulation
+
+**File Operations:**
+- ✅ Use `pigz` instead of `gzip` for parallel compression (faster on multi-core)
+- ✅ Use `rsync` instead of `cp` for large file operations (progress, resume support)
+- ✅ Use `watchexec` for file watching instead of manual polling loops
+
+**Examples:**
+```bash
+# ✅ Good - Using performance tools
+rg "TODO" --type py                    # Instead of: grep -r "TODO" *.py
+fd "test.*\.py$"                       # Instead of: find . -name "test*.py"
+bat script.py                          # Instead of: cat script.py
+eza -la --git                          # Instead of: ls -la
+z proj                                 # Instead of: cd ~/long/path/to/project
+duf                                    # Instead of: df -h
+tar czf - large_dir | pv | cat > backup.tar.gz  # Show progress
+jq '.users[] | select(.active)' data.json       # Parse JSON
+
+# ❌ Avoid - Slower alternatives
+grep -r "pattern" .
+find . -name "*.log" -type f
+cat file.py
+ls -la
+cd /full/path/to/directory
+df -h
+gzip large_file.tar                    # Use pigz for multi-core compression
+```
+
+**Important Notes:**
+- These tools are installed via Homebrew (see `~/.dotfiles/Brewfile`)
+- Prefer dedicated Claude tools (Read, Grep, Glob) over Bash when available
+- Only use Bash tool when shell execution is truly required
+- Performance tools are especially valuable for large codebases/files
+- **Setup required for some tools:**
+  ```bash
+  # Enable zoxide (add to ~/.bashrc)
+  eval "$(zoxide init bash)"
+
+  # Enable delta for git
+  git config --global core.pager delta
+  git config --global interactive.diffFilter "delta --color-only"
+  ```
+
 ### When Helping with Code
 1. **Follow existing patterns** - Read and match established conventions
 2. **Test coverage required** - No production code without tests (TDD)
@@ -502,6 +580,7 @@ Start with ticket metadata (ID, status, Linear URL), then a 1–2 sentence summa
 ✅ Cover new code with tests
 ✅ Follow existing project patterns
 ✅ Check project .claude/CLAUDE.md for specific requirements
+✅ Use performance tools (rg, fd, bat, eza, delta, jq, etc.) instead of standard Unix tools in Bash
 
 ### Don't:
 ❌ Override formatter defaults without reason
@@ -641,6 +720,14 @@ See `~/.claude/commands/README.md` for detailed documentation.
 
 ## Changelog
 
+**v2.4** - 2026-02-26
+- ⚡ **Performance Tools Preferences:** Added comprehensive section for installed performance tools
+- **Tool replacements:** ripgrep, fd, fzf, htop, pv, jq, yq, pigz, rsync, watchexec
+- **Top 5 productivity tools added:** bat, eza, zoxide, delta, duf (immediate productivity boost)
+- **Clear guidelines:** When to use each tool with practical examples
+- **Better defaults:** Agents now prefer faster, modern alternatives to standard Unix tools
+- **Updated Brewfile:** Added bat, eza, zoxide, git-delta, duf to package list
+
 **v2.3** - 2026-02-12
 - 🔧 **Context Management Fix:** Changed "Proactive" to "Reactive" - removed unimplementable instructions
 - **Realistic expectations:** Claude cannot count messages or track token usage proactively
@@ -688,6 +775,6 @@ See `~/.claude/commands/README.md` for detailed documentation.
 
 ---
 
-**Version:** 2.2 (Optimized Session Management)
-**Last Updated:** 2026-01-19
+**Version:** 2.4 (Performance Tools + Optimized Session Management)
+**Last Updated:** 2026-02-26
 **Token Budget:** ~4k (core only), ~7-10k (with typical contexts)

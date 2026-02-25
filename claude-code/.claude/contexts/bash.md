@@ -150,6 +150,7 @@ fi
 ✅ Log with timestamps
 ✅ Validate inputs and paths
 ✅ Check exit codes explicitly
+✅ Use performance tools (rg, fd, jq, pigz, etc.)
 
 ### Don't:
 ❌ Ignore errors (omitting `set -e`)
@@ -159,6 +160,7 @@ fi
 ❌ Nest complex logic inline
 ❌ Trust user input
 ❌ Log sensitive data
+❌ Use slow alternatives when performance tools available (grep→rg, find→fd, cat→bat, ls→eza, df→duf, gzip→pigz)
 
 ---
 
@@ -168,12 +170,81 @@ fi
 - **bash** - Primary shell
 - **vim** - Quick edits
 
+### Performance Tools (Installed via Homebrew)
+
+**Always prefer these modern alternatives in scripts:**
+
+**Search & Find:**
+- `rg` (ripgrep) over `grep` - Faster, respects .gitignore, better defaults
+- `fd` over `find` - Simpler syntax, faster, respects .gitignore
+
+**File Display:**
+- `bat` over `cat` - Syntax highlighting, git integration, auto-paging
+- `eza` over `ls` - Color coding, git status, icons, tree view
+
+**Navigation:**
+- `zoxide` (z) for directory jumping - Learns frequently-used paths
+
+**Data Processing:**
+- `jq` for JSON manipulation (not grep/sed/awk)
+- `yq` for YAML manipulation
+
+**Monitoring & Display:**
+- `pv` for progress bars in pipes
+- `htop` over `top` for interactive monitoring
+- `duf` over `df` for disk usage with better visualization
+
+**Git:**
+- `delta` as git pager for syntax-highlighted diffs
+
+**File Operations:**
+- `pigz` over `gzip` for parallel compression
+- `rsync` over `cp` for large file operations
+
+**Other:**
+- `watchexec` for file watching (better than polling loops)
+- `fzf` for interactive selection
+
+**Examples:**
+```bash
+# Search for patterns
+rg "TODO" --type sh              # Instead of: grep -r "TODO" *.sh
+fd "\.log$" /var/log             # Instead of: find /var/log -name "*.log"
+
+# Display files
+bat script.sh                    # Instead of: cat script.sh
+eza -la --git                    # Instead of: ls -la
+
+# Navigation
+z scripts                        # Instead of: cd ~/.dotfiles/scripts
+
+# Process JSON/YAML
+jq '.config.database' config.json
+yq eval '.database.host' config.yaml
+
+# Disk usage
+duf                              # Instead of: df -h
+
+# Show progress
+tar czf - large_dir | pv -s $(du -sb large_dir | cut -f1) > backup.tar.gz
+
+# Parallel compression
+tar cf - large_dir | pigz -p $(nproc) > backup.tar.gz
+
+# Watch and execute
+watchexec -e sh,bash "shellcheck *.sh"
+
+# Interactive selection
+git branch | fzf | xargs git checkout
+```
+
 ### Best Practices
 - **Shebangs:** `#!/usr/bin/env bash` (portable)
 - **Entry points only** - Scripts, not sourced libraries
 - **Executable bit** - Set with `chmod +x`
+- **Use performance tools** - Leverage rg, fd, jq, etc. for better efficiency
 
 ---
 
-**Context Version:** 1.0
-**Last Updated:** 2025-11-27
+**Context Version:** 1.1
+**Last Updated:** 2026-02-26
