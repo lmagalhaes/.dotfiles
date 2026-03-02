@@ -1,13 +1,25 @@
 " Remove trailing whitespace on save
 autocmd BufWritePre * %s/\s\+$//e
 
+set nocompatible
+
+" Better file handling
+filetype on
+filetype plugin on
+filetype plugin indent on   " Enable filetype detection
+
 " Basic settings
 set number              " Show line numbers
 set relativenumber      " Relative line numbers for easier navigation
 set ruler               " Show cursor position
 set showcmd             " Show incomplete commands
-set wildmenu            " Visual autocomplete for command menu
+set showmode
 set showmatch           " Highlight matching brackets
+
+set wildmenu " Enable auto completion menu after pressing TAB.
+set wildmode=list:longest " Make wildmenu behave like similar to Bash completion.t
+" There are certain files that we would never want to edit with Vim.
+set wildignore=*.docx,*.jpg,*.png,*.gif,*.pdf,*.pyc,*.exe,*.flv,*.img,*.xlsx " Wildmenu will ignore files with these extensions.
 
 " Indentation
 set autoindent          " Copy indent from current line
@@ -22,7 +34,12 @@ set incsearch           " Incremental search
 set hlsearch            " Highlight search results
 set ignorecase          " Case insensitive search
 set smartcase           " Case sensitive when uppercase present
+set history=1000
 
+"This unsets the "last search pattern" register by hitting return
+nnoremap <CR> :noh<CR><CR>
+
+" Autocomplete
 " Usability
 set backspace=indent,eol,start  " Backspace behavior
 set encoding=utf-8      " UTF-8 encoding
@@ -33,6 +50,7 @@ set scrolloff=3         " Keep 3 lines visible above/below cursor
 syntax on               " Enable syntax highlighting
 set background=dark     " Dark background
 set cursorline          " Highlight current line
+"set cursorcolumn
 
 " Centralized backup files (clean workspace but safe)
 set backup
@@ -59,8 +77,6 @@ set statusline+=\ %y    " File type
 set statusline+=\ %l:%c " Line:Column
 set statusline+=\ %p%%  " Percentage through file
 
-" Better file handling
-filetype plugin indent on   " Enable filetype detection
 set hidden                  " Allow switching buffers without saving
 
 " Better completion
@@ -107,9 +123,36 @@ let g:fzf_layout = { 'window': { 'width': 0.9, 'height': 0.6, 'relative': v:true
 
 let mapleader = " "
 nnoremap <Leader>r :source $MYVIMRC<CR>
+" You can split the window in Vim by typing :split or :vsplit.
+" Navigate the split view easier by pressing CTRL+j, CTRL+k, CTRL+h, or CTRL+l.
+nnoremap <c-j> <c-w>j
+nnoremap <c-k> <c-w>k
+nnoremap <c-h> <c-w>h
+nnoremap <c-l> <c-w>l
+
+nnoremap <C-J> <C-W><C-J>
+nnoremap <C-K> <C-W><C-K>
+nnoremap <C-L> <C-W><C-L>
+nnoremap <C-H> <C-W><C-H>
+
+set splitbelow
+set splitright
+
+" Resize split windows using arrow keys by pressing:
+" CTRL+UP, CTRL+DOWN, CTRL+LEFT, or CTRL+RIGHT.
+noremap <c-up> <c-w>+
+noremap <c-down> <c-w>-
+noremap <c-left> <c-w>>
+noremap <c-right> <c-w><
+
+inoremap jj <esc>
+nnoremap n nzz
+nnoremap N Nzz
+
 " Plug 'junegunn/fzf' is the 'native' plugin that comes with the fzf repo
 " Plug 'junegunn/fzf.vim' is an additional plugin with more commands/options
 call plug#begin('~/.vim/plugged')
 Plug 'junegunn/fzf', { 'do': { -> fzf#install() } }
 Plug 'junegunn/fzf.vim'
+Plug 'christoomey/vim-tmux-navigator'
 call plug#end()
