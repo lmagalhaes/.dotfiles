@@ -1,0 +1,12 @@
+theme = Cobalt Next
+
+# Keyboard overrides to match iTerm behavior
+
+# Shift+Fn+Right: jump to end of line
+keybind = shift+end=text:\x1b[1;2F
+
+# Shift+Enter: insert newline (CSI u format for tmux compatibility)
+keybind = shift+enter=text:\x1b[13;2u
+
+# Ctrl+Enter: submit/execute
+keybind = ctrl+enter=text:\x1b[13;5u

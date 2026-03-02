@@ -23,7 +23,7 @@ cd "$DOTFILES"
 
 # Stow packages
 echo "Installing packages with stow..."
-PACKAGES=("vim" "bash" "tmux" "claude-code")
+PACKAGES=("vim" "bash" "tmux" "claude-code" "readline" "ghostty")
 
 for package in "${PACKAGES[@]}"; do
   if [ -d "$package" ]; then

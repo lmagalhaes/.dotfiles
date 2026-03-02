@@ -1,0 +1,8 @@
+# Readline configuration for bash
+# Handle Ctrl+Enter and Shift+Enter in different contexts
+
+"\e[13;5u": accept-line    # Ctrl+Enter (direct from Ghostty)
+"\e[27;5;13~": accept-line # Ctrl+Enter (transformed by tmux)
+
+"\e[13;2u": "\n"           # Shift+Enter (insert newline)
+"\e[27;2;13~": "\n"        # Shift+Enter (transformed by tmux)
