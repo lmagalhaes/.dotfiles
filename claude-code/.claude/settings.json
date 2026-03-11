@@ -1,11 +1,5 @@
 {
   "$schema": "https://json.schemastore.org/claude-code-settings.json",
-  "env": {
-    "CLAUDE_CODE_USE_BEDROCK": "1",
-    "AWS_DEFAULT_REGION": "us-west-2",
-    "ANTHROPIC_MODEL": "arn:aws:bedrock:us-west-2:757844747633:inference-profile/global.anthropic.claude-sonnet-4-5-20250929-v1:0",
-    "ANTHROPIC_SMALL_FAST_MODEL": "arn:aws:bedrock:us-west-2:757844747633:inference-profile/global.anthropic.claude-haiku-4-5-20251001-v1:0"
-  },
   "includeCoAuthoredBy": false,
   "permissions": {
     "allow": [
@@ -63,5 +57,6 @@
   },
   "feedbackSurveyState": {
     "lastShownTime": 1754024052158
-  }
+  },
+  "model": "haiku"
 }
