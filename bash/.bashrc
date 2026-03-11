@@ -18,28 +18,24 @@ fi;
 
 PATH="$HOME/.dotfiles/bin:$HOME/bin:$HOME/workspace/lmagalhaes/bin:$PATH"
 
-eval $(keychain -q --timeout 480 --eval ~/.ssh/id_ed25519 ~/.ssh/id_rsa)
+eval "$(keychain -q --timeout 480 --eval ~/.ssh/id_ed25519 ~/.ssh/id_rsa)"
 eval "$(task --completion bash)"
 
 export NVM_DIR="$HOME/.nvm"
-  # This loads nvm
-  [ -s "$HOMEBREW_PREFIX/opt/nvm/nvm.sh" ] && \. "$HOMEBREW_PREFIX/opt/nvm/nvm.sh"
-  # This loads nvm bash_completion
-  [ -s "$HOMEBREW_PREFIX/opt/nvm/etc/bash_completion.d/nvm" ] && \. "$HOMEBREW_PREFIX/opt/nvm/etc/bash_completion.d/nvm"
+# This loads nvm
+[ -s "$HOMEBREW_PREFIX/opt/nvm/nvm.sh" ] && \. "$HOMEBREW_PREFIX/opt/nvm/nvm.sh"
+# This loads nvm bash_completion
+[ -s "$HOMEBREW_PREFIX/opt/nvm/etc/bash_completion.d/nvm" ] && \. "$HOMEBREW_PREFIX/opt/nvm/etc/bash_completion.d/nvm"
 
 export PATH="$HOMEBREW_PREFIX/opt/libpq/bin:$PATH"
 export HOMEBREW_BUNDLE_FILE=$HOME/.dotfiles/Brewfile
 # Brew bash completion
 [[ -r "$HOMEBREW_PREFIX/etc/profile.d/bash_completion.sh" ]] && . "$HOMEBREW_PREFIX/etc/profile.d/bash_completion.sh"
 
-# Load custom bash completions
-for completion_file in ~/.bash_completion.d/*; do
-    [ -f "$completion_file" ] && source "$completion_file"
-done
-
 # Pyenv configuration
 if command -v pyenv 1>/dev/null 2>&1; then
     eval "$(pyenv init --path)"
+    eval "$(pyenv init -)"
 fi;
 
 
@@ -80,9 +76,6 @@ fi;
 export GIT_PS1_SHOWCOLORHINTS=true
 export GIT_PS1_SHOWUNTRACKEDFILES=true
 export GIT_PS1_SHOWDIRTYSTATE=true
-export GIT_PS1_SHOWDIRTYSTATE=true
-export GIT_PS1_SHOWUNTRACKEDFILES=true
-export GIT_PS1_SHOWCOLORHINTS=true
 
 # Function to shorten workspace paths
 _shorten_pwd() {
@@ -114,7 +107,7 @@ source "$HOME/.orbstack/shell/init.bash" 2>/dev/null || :
 #### WORKYARD CONFIG
 export PATH="/opt/homebrew/opt/mysql@8.0/bin:$PATH"
 
-PATH="$HOME/bin:$HOME/workspace/lmagalhaes/flux:$HOME/workspace/lmagalhaes/bin:$PATH"
+PATH="$HOME/workspace/lmagalhaes/flux:$PATH"
 _FLUX_COMPLETE=bash_source flux > ~/.bash_completion.d/flux
 
 eval "$(orb completion bash)"
