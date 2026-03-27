@@ -16,7 +16,7 @@ then
     fi;
 fi;
 
-PATH="$HOME/.dotfiles/bin:$HOME/bin:$HOME/workspace/lmagalhaes/bin:$PATH"
+PATH="$DOTFILES_PATH/bin:$HOME/bin:$HOME/workspace/lmagalhaes/bin:$PATH"
 
 eval "$(keychain -q --timeout 480 --eval ~/.ssh/id_ed25519 ~/.ssh/id_rsa)"
 eval "$(task --completion bash)"
@@ -59,7 +59,7 @@ export COLOR_LIGHT_GRAY='\[\e[0;37m\]'
 
 if [[ -n $(command -v aws) ]];
 then
-    complete -C '/opt/homebrew/bin/aws_completer' aws
+    complete -C '$HOMEBREW_PREFIX/bin/aws_completer' aws
 fi;
 
 source $HOME/.aliases
@@ -97,22 +97,25 @@ export BUILDKIT_PROGRESS=plain
 
 
 # Added by Toolbox App
-export PATH="$PATH:/Users/lmagalhaes/Library/Application Support/JetBrains/Toolbox/scripts"
-export PATH="/opt/homebrew/opt/gnu-sed/libexec/gnubin:$PATH"
+export PATH="$PATH:$HOME/Library/Application Support/JetBrains/Toolbox/scripts"
+export PATH="$HOMEBREW_PREFIX/opt/gnu-sed/libexec/gnubin:$PATH"
 
 # Added by OrbStack: command-line tools and integration
 # This won't be added again if you remove it.
 source "$HOME/.orbstack/shell/init.bash" 2>/dev/null || :
 
 #### WORKYARD CONFIG
-export PATH="/opt/homebrew/opt/mysql@8.0/bin:$PATH"
+export PATH="$HOMEBREW_PREFIX/opt/mysql@8.0/bin:$PATH"
 
-PATH="$HOME/workspace/lmagalhaes/flux:$PATH"
-_FLUX_COMPLETE=bash_source flux > ~/.bash_completion.d/flux
+#if [ -d "$HOME/workspace/lmagalhaes/flux" ];
+#then
+#    PATH="$HOME/workspace/lmagalhaes/flux:$PATH"
+#    _FLUX_COMPLETE=bash_source flux > ~/.bash_completion.d/flux
+#fi;
 
 eval "$(orb completion bash)"
 
-for completion_file in ~/.bash_completion.d/*; do
+for completion_file in $HOME/.bash_completion.d/*; do
     [ -f "$completion_file" ] && source "$completion_file"
 done
 
