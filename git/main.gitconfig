@@ -17,5 +17,3 @@
 
 # [includeIf "onbranch:release/*"]
 #     path = ~/.dotfiles/git/hosts/$(hostname).gitconfig
-[core]
-	excludesfile = /Users/lmagalhaes/.config/git/ignore
