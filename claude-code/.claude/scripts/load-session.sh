@@ -85,6 +85,25 @@ fi
 # Get current working directory
 CWD="$(pwd -P)"
 
+# Resolve a session JSON file path from its ID.
+# Checks: branch subdir → any subdir → flat legacy layout.
+# Sets SESSION_FILE global; caller checks [ -f "$SESSION_FILE" ].
+_resolve_file() {
+  local sid="$1" branch="${2:-$CURRENT_BRANCH}"
+  SESSION_FILE=""
+  if [ -n "$branch" ] && [ -f "$SESSIONS_DIR/$branch/$sid.json" ]; then
+    SESSION_FILE="$SESSIONS_DIR/$branch/$sid.json"
+    return
+  fi
+  local _found
+  _found=$(find "$SESSIONS_DIR" -maxdepth 2 -name "$sid.json" 2>/dev/null | head -1)
+  if [ -n "$_found" ]; then
+    SESSION_FILE="$_found"
+    return
+  fi
+  SESSION_FILE="$SESSIONS_DIR/$sid.json"
+}
+
 # Determine which branch to filter by
 if [ -n "$FILTER_BRANCH" ] && [ "$FILTER_BRANCH" != "__NEXT__" ]; then
   TARGET_BRANCH="$FILTER_BRANCH"
@@ -96,11 +115,11 @@ fi
 
 # Load specific session or latest N sessions
 if [ -n "$SESSION_ID" ]; then
-  # Load specific session
-  SESSION_FILE="$SESSIONS_DIR/$SESSION_ID.json"
+  # Load specific session - check branch subdir first, then flat (legacy)
+  _resolve_file "$SESSION_ID"
   if [ ! -f "$SESSION_FILE" ]; then
-    # List available sessions for error message
-    AVAILABLE=$(ls -1r "$SESSIONS_DIR"/session-*.json 2>/dev/null | head -5 | xargs -I{} basename {} .json | jq -R . | jq -s .)
+    # List available sessions from branch subdirs and flat layout
+    AVAILABLE=$(find "$SESSIONS_DIR" -maxdepth 2 -name "session-*.json" 2>/dev/null | sort -r | head -5 | xargs -I{} basename {} .json | jq -R . | jq -s .)
     jq -n --arg id "$SESSION_ID" --argjson available "$AVAILABLE" '{
       error: "session_not_found",
       message: ("Session not found: " + $id),
@@ -164,7 +183,7 @@ else
     BRANCH_LATEST=$(jq -r --arg branch "$TARGET_BRANCH" '.latest_by_branch[$branch] // empty' "$INDEX_FILE" 2>/dev/null)
 
     if [ -n "$BRANCH_LATEST" ]; then
-      SESSION_FILE="$SESSIONS_DIR/$BRANCH_LATEST.json"
+      _resolve_file "$BRANCH_LATEST" "$TARGET_BRANCH"
       if [ -f "$SESSION_FILE" ]; then
         FILE_SIZE=$(wc -c < "$SESSION_FILE" | tr -d ' ')
         SESSION_BRANCH=$(jq -r '.git_branch // "unknown"' "$SESSION_FILE")
@@ -218,7 +237,7 @@ else
     fi
 
     if [ -n "$FALLBACK_SESSION" ]; then
-      SESSION_FILE="$SESSIONS_DIR/$FALLBACK_SESSION.json"
+      _resolve_file "$FALLBACK_SESSION" "$TARGET_BRANCH"
       if [ -f "$SESSION_FILE" ]; then
         FILE_SIZE=$(wc -c < "$SESSION_FILE" | tr -d ' ')
         SESSION_BRANCH=$(jq -r '.git_branch // "unknown"' "$SESSION_FILE")
@@ -317,7 +336,7 @@ else
   # Build sessions array
   SESSIONS_JSON="[]"
   for sid in $SESSION_IDS; do
-    SESSION_FILE="$SESSIONS_DIR/$sid.json"
+    _resolve_file "$sid" "$TARGET_BRANCH"
     [ -f "$SESSION_FILE" ] || continue
     FILE_SIZE=$(wc -c < "$SESSION_FILE" | tr -d ' ')
 

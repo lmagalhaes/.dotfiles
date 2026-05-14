@@ -12,7 +12,7 @@
 #
 # Save mode expects:
 #   - Complete session JSON on stdin
-#   - Writes to sessions_dir/{session_id}.json
+#   - Writes to sessions_dir/{branch}/{session_id}.json
 #   - Updates index.json
 #
 
@@ -63,11 +63,20 @@ case "$MODE" in
 
     SESSIONS_DIR=$(find_sessions_dir)
 
-    # Create sessions directory if needed
-    mkdir -p "$SESSIONS_DIR"
+    # Create branch-keyed directory
+    BRANCH_DIR="$SESSIONS_DIR/$BRANCH"
+    mkdir -p "$BRANCH_DIR"
+
+    # Migrate flat sessions belonging to this branch to the branch subdir
+    for _flat_file in "$SESSIONS_DIR"/session-*.json; do
+      [ -f "$_flat_file" ] || continue
+      _flat_branch=$(jq -r '.git_branch // empty' "$_flat_file" 2>/dev/null)
+      [ "$_flat_branch" = "$BRANCH" ] && mv "$_flat_file" "$BRANCH_DIR/"
+    done
+    unset _flat_file _flat_branch
 
     # Write session file
-    SESSION_FILE="$SESSIONS_DIR/$SESSION_ID.json"
+    SESSION_FILE="$BRANCH_DIR/$SESSION_ID.json"
     echo "$SESSION_JSON" | jq '.' > "$SESSION_FILE"
 
     # Update index.json
