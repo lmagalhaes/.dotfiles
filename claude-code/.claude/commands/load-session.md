@@ -6,170 +6,204 @@ allowed-tools:
   - Read
 ---
 
-# Load Session Command (Hybrid)
+# Load Session Command
 
 Load session data using the bash script and format output for the user.
 
 ## Usage
 
-- `/load-session` - Load latest session **for current branch**
-- `/load-session 3` - Load last 3 sessions for current branch
-- `/load-session --all` - Load latest session from any branch
-- `/load-session --all 3` - Load last 3 sessions from any branch
-- `/load-session --branch main` - Load latest session for specific branch
+- `/load-session` - Show 3-line hint for current branch (default)
+- `/load-session --full` - Full session details
+- `/load-session 3` - Hint for last 3 sessions for current branch
+- `/load-session --all` - Latest session from any branch (hint)
+- `/load-session --all 3` - Last 3 sessions from any branch
+- `/load-session --branch main` - Latest session for specific branch
 - `/load-session session-2026-01-12-143000` - Load specific session by ID
-- `/load-session --full` - Force full details view
-- `/load-session --compact` - Force compact view
+- `/load-session --compact` - Compact view
 - `/load-session --summary` - Ultra-compact view
 
 ## Instructions
 
-1. **Run the script** with user's arguments:
-   ```bash
-   ~/.claude/scripts/load-session.sh $ARGUMENTS
-   ```
+### 1. Run the script
 
-2. **Handle errors** - If JSON contains `error` field:
-   - `no_sessions_dir`: "No sessions found. Use `/wrap-session` to create one."
-   - `no_index`: "No sessions recorded yet. Use `/wrap-session` after your session."
-   - `session_not_found`: Show message and list available sessions
-   - `no_sessions`: "No session files found."
-   - `no_branch_session`: "No session found for branch: {branch}. Available branches: {list}"
-   - `no_branch_sessions`: "No sessions found for branch: {branch}. Available branches: {list}"
+```bash
+~/.claude/scripts/load-session.sh $ARGUMENTS
+```
 
-3. **Handle branch/directory mismatch** - If `branch_mismatch` or `dir_mismatch` is true:
+### 2. Handle errors
 
-   Display a warning box BEFORE the session content:
-   ```markdown
-   > ⚠️ **Context Mismatch**
-   >
-   > You are in: `{current_branch}` ({current_dir})
-   > Session is from: `{session_branch}` ({session_dir})
-   >
-   > The loaded context may not apply to your current work.
-   > Options:
-   > - `cd {session_dir}` to switch to session's worktree
-   > - `/load-session --branch {current_branch}` to load current branch's session
-   > - Continue with caution (patterns/files may differ)
-   ```
+If JSON contains `error` field:
+- `no_sessions_dir`: "No sessions found. Use `/wrap-session` to create one."
+- `no_index`: "No sessions recorded yet. Use `/wrap-session` after your session."
+- `session_not_found`: Show message and list available sessions
+- `no_sessions`: "No session files found."
+- `no_branch_session`: "No session found for branch: {branch}. Available branches: {list}"
+- `no_branch_sessions`: "No sessions found for branch: {branch}. Available branches: {list}"
 
-4. **Determine display mode** from JSON output:
-   - If `mode` is set (--full/--compact/--summary), use it
-   - If `count > 1`, use compact
-   - If single session: `file_size > 10000` OR `completed_count + remaining_count >= 25` → compact, else full
+### 3. Validate before displaying anything
 
-5. **Format output** based on mode:
+Run these checks in order, stopping at the first issue (unless `--full` was explicitly passed):
 
-   **FULL MODE:**
-   ```markdown
-   # 🔄 Session Restored
+**a. Suppressed session** — if `sessions[0].meta.is_suppressed` is true AND mode is not `"full"`:
+```
+> Session from {age_days}d ago has been auto-suppressed (>30 days old).
+> Use `/load-session --full` to view it anyway, or `/wrap-session` to save a fresh one.
+```
+Stop here.
 
-   **Session:** {session_id}
-   **Date:** {formatted timestamp}
-   **Branch:** {git_branch} | Worktree: {is_worktree}
-   **Directory:** {working_directory}
-   **Tokens:** {tokens_used}k ({percent}%) | Messages: {messages}
+**b. Branch/directory mismatch** — if `branch_mismatch` or `dir_mismatch` is true, display before session content:
+```markdown
+> ⚠️ **Context Mismatch**
+>
+> You are in: `{current_branch}` ({current_dir})
+> Session is from: `{session_branch}` ({session_dir})
+>
+> The loaded context may not apply to your current work.
+> Options:
+> - `/load-session --branch {current_branch}` to load current branch's session
+> - Continue with caution (context may differ)
+```
 
-   ## Summary
-   {summary}
+### 4. Determine display mode
 
-   ## Last Completed
-   - ✅ {each completed task}
+- `mode: "full"` → FULL
+- `mode: "compact"` → COMPACT
+- `mode: "summary"` → SUMMARY
+- `count > 1` → MULTI-SESSION (compact)
+- `mode: null` → **HINT** (default)
 
-   ## Still Remaining
-   - ⏳ {each remaining task}
+### 5. Format output
 
-   ## Key Context
-   **Patterns Learned:**
-   - {patterns_learned}
+---
 
-   **Important Files:**
-   - {key_files}
+**HINT MODE (default — no flags):**
 
-   **Key Decisions:**
-   - {decision}: {rationale}
+```markdown
+{staleness_line if is_stale}
+**Session:** {branch} · {age_days}d ago{commit_delta_suffix}
+**Resume:** {start_here}{phantom_suffix}
+{open_questions count} open questions · {decisions count} decisions · {watch_out count} watch-outs
 
-   ## 🎯 Next Steps
-   **Start Here:** {next_session.start_here}
+`/load-session --full` for complete context
+```
 
-   **Watch Out For:**
-   - {watch_out items}
+- `commit_delta_suffix` = ` · {N} commits since save` if `commit_delta >= 0`, else omit
+- `staleness_line` = `⚠ Session may be stale ({age_days}d{delta_part}) — consider /prime-context to refresh`
+- `phantom_suffix` = ` ⚠ (path not found — may need /prime-context)` if `!start_here_exists`
 
-   **Load Contexts:** {preload_contexts}
+---
 
-   **Optimization Tips:**
-   - {optimize items}
-   ```
+**FULL MODE:**
 
-   **COMPACT MODE:**
-   ```markdown
-   # 🔄 Session Restored
+```markdown
+# 🔄 Session Restored
 
-   **Session:** {session_id}
-   **Date:** {date} | **Branch:** {branch} | Worktree: {is_worktree}
-   **Tokens:** {tokens}k | Messages: {messages}
+{staleness banner if is_stale:}
+> ⚠ Session may be stale ({age_days}d, {commit_delta} commits) — consider /prime-context to refresh
 
-   ## Summary
-   {summary}
+{phantom banner if !start_here_exists:}
+> ⚠ Resume point not found: {start_here}
+> File may have moved. Run /prime-context for fresh context.
 
-   ## Quick Stats
-   ✅ {completed_count} completed | ⏳ {remaining_count} remaining | 📚 {patterns count} patterns
+**Session:** {session_id}
+**Date:** {timestamp} ({age_days}d ago{commit_delta_part})
+**Branch:** {git_branch} | Worktree: {is_worktree}
 
-   ## 🎯 Next Steps
-   **Start Here:** {start_here}
+## Key Decisions
+- **{decision}:** {rationale}
 
-   **Watch Out:**
-   - {first 3 watch_outs}
+## Dead Ends
+- **{what}:** {why_abandoned}
 
-   **Contexts:** {preload_contexts}
+## Watch Out
+- {watch_out items}
 
-   ---
-   💡 Use `/load-session --full` for complete details
-   ```
+## Assumptions
+- [ ] {assumption} (confirmed: {confirmed})
 
-   **SUMMARY MODE:**
-   ```markdown
-   # 🔄 Session: {session_id}
+## Open Questions
+- {question} (→ {asked_to})
 
-   **Branch:** {branch}
-   {summary}
+## 🎯 Next Steps
+**Resume:** {start_here}{phantom_marker}
 
-   **Next:** {start_here}
-   **Contexts:** {preload_contexts}
-   **Watch:** {first gotcha}
+---
+**Tip:** After load-session, run `/prime-context` to refresh task understanding.
+```
 
-   💡 `/load-session --full` for details
-   ```
+Where `commit_delta_part` = ` · {N} commits since save` if `commit_delta >= 0`.
 
-   **MULTI-SESSION (count > 1):**
-   ```markdown
-   # 🔄 Sessions Loaded (Last {count})
+For sessions with **old schema** (has `summary`, `completed`, `remaining`, `patterns_learned`): show those fields instead under a "## Legacy Context" header.
 
-   ## {session_id}
-   **Date:** {date} | **Branch:** {branch} | **Tokens:** {tokens}k
-   {summary}
-   ✅ {completed_count} tasks | Key: {first pattern}
+---
 
-   [repeat for each session]
+**COMPACT MODE:**
 
-   ## 🎯 Combined Context
-   **Start:** {latest start_here}
-   **Contexts:** {unique contexts}
-   **Key Patterns:** {top patterns across sessions}
-   ```
+```markdown
+# 🔄 Session Restored
 
-6. **CD to session directory** - If no mismatch, offer to cd:
-   - If `working_directory` differs from current pwd, note: "Session directory: {path}"
-   - Claude should internally track this as the working context
+**Session:** {session_id}
+**Date:** {date} | **Branch:** {branch} | {age_days}d ago
+{staleness warning if is_stale}
 
-7. **Load into memory** - Regardless of display mode, internally note all:
-   - Current branch context (which branch this session is for)
-   - Patterns learned
-   - Key files
-   - Decisions made
-   - Watch-outs
+## Summary / Key Context
+{summary if present, else list decisions + watch_outs}
 
-8. **Auto-load contexts** - If `preload_contexts` lists files, read them from `~/.claude/contexts/` and confirm: "✓ Loaded contexts: {list}"
+## 🎯 Next Steps
+**Resume:** {start_here}{phantom_marker}
+
+---
+💡 Use `/load-session --full` for complete details
+```
+
+---
+
+**SUMMARY MODE:**
+
+```markdown
+# 🔄 Session: {session_id}
+
+**Branch:** {branch} · {age_days}d ago
+**Resume:** {start_here}
+{first watch_out or first decision}
+
+💡 `/load-session --full` for details
+```
+
+---
+
+**MULTI-SESSION (count > 1):**
+
+```markdown
+# 🔄 Sessions Loaded (Last {count})
+
+## {session_id}
+**Date:** {date} | **Branch:** {branch} | {age_days}d ago{stale_marker}
+**Resume:** {start_here}
+{decisions count} decisions · {watch_out count} watch-outs
+
+[repeat for each session]
+
+## 🎯 Latest Resume Point
+{latest start_here}
+```
+
+Where `stale_marker` = ` ⚠ stale` if `meta.is_stale`.
+
+---
+
+### 6. Load into memory
+
+Regardless of display mode, internally note:
+- Current branch context
+- Decisions made
+- Watch-outs
+- Open questions / assumptions
+- Resume point (start_here)
+
+### 7. Auto-load contexts
+
+If session has `preload_contexts` (old schema), read those files from `~/.claude/contexts/` and confirm: "✓ Loaded contexts: {list}"
 
 ## Branch-Aware Behavior
 
@@ -179,12 +213,10 @@ By default, `/load-session` filters to the **current git branch**:
 - Use `--all` to see sessions from all branches
 - Use `--branch NAME` to load a specific branch's session
 
-This prevents accidentally loading context from a different worktree.
-
 ## Notes
 
-- Skip empty sections (no blockers = no blockers section)
+- Skip empty sections (no decisions = no decisions section)
 - Use relative paths in display
-- Format timestamps in local timezone
 - Token percentage is out of 200k limit
 - Always show branch info prominently to avoid confusion
+- The default hint is intentionally minimal — full context loads on demand
