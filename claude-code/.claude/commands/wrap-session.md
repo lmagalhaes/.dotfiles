@@ -6,69 +6,77 @@ allowed-tools:
   - Write
 ---
 
-# Wrap Session Command (Hybrid)
+# Wrap Session Command
 
-Create a session summary by analyzing conversation and saving via bash script.
+Create a session summary capturing only non-derivable context, then save via bash script.
+
+## Usage
+
+- `/wrap-session` - Save session to disk
+- `/wrap-session --preview` - Show what would be saved without writing to disk
 
 ## Instructions
 
-### 1. Get Environment
+### 1. Parse Arguments
+
+Check if `$ARGUMENTS` contains `--preview`. Set preview mode accordingly.
+
+### 2. Get Environment
 
 Run the script to get environment data:
 ```bash
 ~/.claude/scripts/wrap-session.sh env
 ```
 
-This returns JSON with:
+Also get the current commit hash:
+```bash
+git rev-parse HEAD 2>/dev/null || echo ""
+```
+
+Environment fields:
 - `session_id` - Generated ID (session-YYYY-MM-DD-HHMMSS)
-- `timestamp` - ISO timestamp
+- `timestamp` - ISO timestamp (use as `session_date`)
 - `working_directory` - Canonical path (pwd -P)
 - `git_branch` - Current branch
 - `is_worktree` - Boolean
 - `sessions_dir` - Where to save
 
-### 2. Analyze Conversation
+### 3. Analyze Conversation
 
-Review the conversation to extract:
+Extract **only what cannot be regenerated** from git, Linear, or re-reading the code:
 
-**Completed Tasks** (max 5, most recent):
-- Look for todo completions, git commits, successful operations
-- Focus on what was actually finished
+**Decisions** (max 5):
+- Architecture choices or approach selections made during this session
+- Only include if the reasoning requires this conversation to understand — skip if self-evident from code
+- Format: `decision` (what, max 20 words) + `rationale` (why, max 40 words)
 
-**Remaining Tasks** (max 5, priority order):
-- Pending todos, mentioned next steps
-- What still needs to be done
+**Dead Ends** (max 5):
+- Approaches tried and abandoned this session; prevents future sessions repeating them
+- Format: `what` (what was tried, max 30 words) + `why_abandoned` (why it failed, max 40 words)
 
-**Patterns Learned** (max 5, max 50 words each):
-- Codebase conventions discovered
-- Technical insights gained
-- Use imperatives: "Use X for Y", "Avoid Z when..."
+**Watch Out** (max 5, max 50 words each):
+- Active gotchas, subtle invariants, or landmines discovered; must be non-obvious from the code
 
-**Key Files** (max 5):
-- Files frequently accessed or modified
-- Use relative paths
+**Assumptions** (max 5):
+- **Primary:** If the conversation includes a prime-context synthesis with an "Assumptions Made" section, extract each assumption verbatim
+- **Secondary:** Note implicit assumptions made during the session that weren't verified
+- Format: `assumption` (text, max 50 words) + `confirmed: false` (unless user explicitly confirmed)
 
-**Decisions Made** (significant ones only):
-- `decision`: What was decided (max 20 words)
-- `rationale`: Why (max 40 words)
+**Open Questions** (max 5):
+- **Primary:** If the conversation includes a prime-context synthesis with a "Questions for Clarification" section, extract them verbatim
+- **Secondary:** Note unresolved questions raised during the session
+- Format: `question` (text, max 50 words) + `asked_to: "user"` (or relevant party)
 
-**Blockers** (active only, skip resolved):
-- Issues still affecting work
-- Status: blocked or workaround
+**⚠ Warning:** After extracting, if BOTH `assumptions` AND `open_questions` are empty, display before saving:
+> ⚠ Both arrays empty. If you ran /prime-context this session, extract assumptions and questions before saving.
 
-**Metrics**:
-- Extract token usage from system warnings if available
-- Count approximate message exchanges
+**Next Session** (`start_here`):
+- Most specific resume point possible: `file:line`, exact command, or concrete task
+- Not a general area — specificity matters
 
-**Next Session**:
-- `start_here`: Specific file:line or task
-- `preload_contexts`: Context files to load
-- `watch_out`: Top 5 gotchas
-- `optimize`: Top 3 optimization tips
+### 4. Build Session JSON
 
-### 3. Build Session JSON
-
-Combine environment data with analyzed content:
+The JSON must include both the environment fields (required by the save script) and the slim content fields:
 
 ```json
 {
@@ -76,139 +84,82 @@ Combine environment data with analyzed content:
   "timestamp": "{from env}",
   "working_directory": "{from env}",
   "git_branch": "{from env}",
-  "is_worktree": {from env},
-
-  "summary": "2-3 sentence overview",
-
-  "completed": ["task1", "task2"],
-  "remaining": ["task3", "task4"],
-
-  "context": {
-    "languages": ["python", "bash"],
-    "contexts_loaded": ["python.md"],
-    "patterns_learned": ["pattern1", "pattern2"],
-    "key_files": ["path/file.py: note"]
-  },
-
+  "is_worktree": "{from env}",
+  "branch": "{git_branch}",
+  "commit_hash": "{git rev-parse HEAD output}",
+  "session_date": "{timestamp from env}",
   "decisions": [
     {"decision": "...", "rationale": "..."}
   ],
-
-  "blockers": [],
-
-  "metrics": {
-    "tokens_used": 42000,
-    "messages_exchanged": 25
-  },
-
+  "dead_ends": [
+    {"what": "...", "why_abandoned": "..."}
+  ],
+  "watch_out": ["..."],
+  "assumptions": [
+    {"assumption": "...", "confirmed": false}
+  ],
+  "open_questions": [
+    {"question": "...", "asked_to": "..."}
+  ],
   "next_session": {
-    "start_here": "specific starting point",
-    "preload_contexts": [],
-    "watch_out": ["gotcha1"],
-    "optimize": ["tip1"]
+    "start_here": "..."
   }
 }
 ```
 
-### 4. Save Session
+**Compression rules:** Max 5 items per array; max 50 words per item text; max 40 words per rationale/why_abandoned. Quality over quantity.
 
-Pipe the JSON to the save script:
+### 5. Save or Preview
+
+**If `--preview`:** Display the populated schema and stop. Do not call the save script.
+
+```markdown
+# 📦 Session Preview (not saved)
+
+**Branch:** {branch} @ {commit_hash[:7]}
+
+{populated session JSON, formatted}
+
+Run `/wrap-session` (without `--preview`) to save.
+```
+
+**If saving:** Pipe the session JSON to the save script:
 ```bash
 echo '{...session JSON...}' | ~/.claude/scripts/wrap-session.sh save
 ```
 
-The script will:
-- Create sessions directory if needed
-- Write session file
-- Update index.json
-- Return success confirmation
+### 6. Update Per-Worktree Docs Index (If In Worktree)
 
-### 5. Update Per-Worktree Docs Index (If In Worktree)
-
-If `is_worktree` is true, refresh the file list in the worktree's docs index:
-
+If `is_worktree` is true:
 ```bash
 ~/.claude/scripts/refresh-worktree-index.sh
 ```
-
-The script will:
-- Auto-detect the current branch
-- Scan for markdown files in the worktree's docs directory
-- Extract descriptions from each file (first H1 or paragraph)
-- Update the "## Files" section in index.md
-
-If the script succeeds, output will show:
-- "✓ Updated file list in: {path}/index.md"
-- Count of files indexed
-
-If script fails (no docs directory, not in worktree), skip silently - this is not critical.
-
-### 6. Create Task Context (Optional)
-
-Write a compressed context file for Task agents:
-
-```bash
-# Write to .claude/task-context.md
-```
-
-Content:
-```markdown
-# Task Agent Context
-
-**Project:** {project name}
-**Branch:** {git_branch}
-**Session:** {timestamp}
-
-## Current Work
-{summary}
-
-## Key Patterns
-{top 3 patterns}
-
-## Critical Files
-{top 3 files}
-
-## Watch Out
-{top 3 gotchas}
-```
+Skip silently if it fails.
 
 ### 7. Display Summary
 
-Show the user:
 ```markdown
 # 📦 Session Wrapped
 
-**Session ID:** {session_id}
-**Tokens Used:** {tokens}k ({percent}%)
-**Branch:** {branch} | Worktree: {yes/no}
+**Branch:** {branch} @ {commit_hash[:7]}
+**Saved:** {session_id}
 
-## ✅ Completed
-- {completed tasks}
-
-## 📋 Remaining
-- {remaining tasks}
+## Captured
+- Decisions: {count}
+- Dead ends: {count}
+- Watch outs: {count}
+- Assumptions: {count}
+- Open questions: {count}
 
 ## 🎯 Next Session
 Start with: {start_here}
-Load contexts: {contexts}
 
-## 💾 Saved
-- `{session_file}`
-- Index updated
+## 💾 Saved to
+`{session_file}`
 ```
-
-## Compression Rules
-
-- **Max 5 items** per array (completed, remaining, patterns, files, watch_out)
-- **Max 50 words** per pattern
-- **Max 20 words** per decision, 40 for rationale
-- **Relative paths** - relative to working_directory
-- **Active blockers only** - skip resolved ones
-- **Quality over quantity** - 5 excellent patterns > 20 mediocre ones
 
 ## Notes
 
-- Focus on actionable context, not documentation
-- Skip empty sections
-- If no tasks completed, session is still valid (exploratory)
-- Token percentage is out of 200k limit
+- Decisions and dead ends have the highest value — prioritize extracting these accurately
+- Skip sections with 0 items rather than noting "none"
+- Exploratory sessions with no code changes are still valid to wrap
