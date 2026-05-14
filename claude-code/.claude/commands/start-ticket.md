@@ -1,11 +1,10 @@
 ---
-description: Create/switch to worktree for a Linear ticket with AI analysis
+description: Create/switch to worktree for a Linear ticket
 model: sonnet
 allowed-tools:
   - Bash
   - Read
   - Write
-  - Glob
   - mcp__linear__get_issue
 ---
 
@@ -21,7 +20,6 @@ The user has explicitly invoked this command. By doing so, they grant you comple
 - Change working directory (cd)
 - Execute git wt-* alias commands
 - Create/write files in `.claude/docs/` directory
-- Spawn Task agents for ticket analysis
 
 **IMPORTANT:** Do NOT prompt the user before running these operations. Proceed immediately with all necessary commands. The user expects this command to run autonomously without interruption.
 
@@ -29,16 +27,16 @@ The user has explicitly invoked this command. By doing so, they grant you comple
 
 ---
 
-You are a git worktree specialist with AI-powered ticket analysis. Set up a complete worktree environment with documentation.
+You are a git worktree specialist. Set up a complete worktree environment.
 
 ## Your Task:
 
-Create or switch to a worktree for the specified ticket, fetch context from Linear, rebase with main, analyze the ticket requirements, and generate actionable documentation.
+Create or switch to a worktree for the specified ticket, fetch context from Linear, and rebase with main.
 
 ## Usage:
 
-- `/start-ticket PLA-123` - Start work on ticket PLA-123 with full analysis
-- `/start-ticket PROJ-456` - Start work on ticket PROJ-456 with full analysis
+- `/start-ticket PLA-123` - Start work on ticket PLA-123
+- `/start-ticket PROJ-456` - Start work on ticket PROJ-456
 
 ## Instructions:
 
@@ -116,20 +114,9 @@ Create or switch to a worktree for the specified ticket, fetch context from Line
    - If rebased successfully:
      - Display: "✓ Rebased with main"
 
-### 9. Analyze Ticket and Create Documentation:
+### 9. Create Docs Pointer:
 
-   **Display:** "🔍 Analyzing ticket..."
-
-   **Analyze the ticket (do this yourself, don't spawn agent for Phase 1):**
-   - Read the ticket description carefully
-   - Identify key requirements and deliverables
-   - Break down into actionable tasks
-   - Identify dependencies or blockers
-   - Note any questions or unclear requirements
-   - Identify potentially affected systems/files
-   - Extract important technical details
-
-   **Initialize docs structure using script:**
+   Write a minimal pointer file (3 fields: ticket_id, branch, linear_url):
    ```bash
    ~/.claude/scripts/init-worktree-docs.sh \
      "[branch-name]" \
@@ -137,50 +124,11 @@ Create or switch to a worktree for the specified ticket, fetch context from Line
      "[Title]" \
      "[Status]" \
      "[Linear URL]" \
-     "[1-2 sentence summary from your analysis]"
+     ""
    ```
 
-   The script automatically:
-   - Creates `.claude/docs/{branch}/` directory structure
-   - Generates `index.md` with ticket metadata
-   - Updates master docs index
-   - Creates symlink in worktree
-   - Scans codebase for existing ticket references
-
-   **Enhance the generated docs with your analysis:**
-   - Get docs path: `DOCS_DIR="$(~/.claude/scripts/project-docs.sh docs-dir)"`
-   - Read the generated index: `cat ${DOCS_DIR}/[branch-name]/index.md`
-   - Append these sections (using Edit tool):
-
-   ```markdown
-   ## Requirements
-   [Numbered list of key requirements/deliverables from Linear description]
-
-   ## Tasks
-   - [ ] Task 1
-   - [ ] Task 2
-   - [ ] Task 3
-
-   ## Dependencies/Blockers
-   - Dependency 1 (if any)
-   - Question: [Unclear requirement?] (if any)
-
-   ## Key Files/Systems
-   - System/file 1 (based on your analysis)
-   - System/file 2
-
-   ## Technical Notes
-   [Important technical details, constraints, or considerations from your analysis]
-
-   ## References
-   - [Link title](URL) (if relevant links in Linear description)
-   ```
-
-   **Show progress:**
-   - "✓ Documentation initialized at `.claude/docs/[branch-name]/index.md`"
-   - Show task count: "📝 [N] tasks identified"
-   - Flag if blockers found: "⚠️ [N] potential blockers identified"
-   - If script found existing references: "💡 Found existing code referencing this ticket"
+   This creates `.claude/docs/[branch-name]/index.md` with `ticket_id`, `branch`, and `linear_url`.
+   Show: "✓ Pointer created at `.claude/docs/[branch-name]/index.md`"
 
 ### 10. Ask About Docker:
    - Ask user: "Switch Docker containers to this worktree? (This will restart containers)"
@@ -194,15 +142,9 @@ Create or switch to a worktree for the specified ticket, fetch context from Line
    Working directory: .worktrees/[branch-name]
    Branch: [branch-name]
    Ticket: [TICKET_ID] - [Title]
-   Documentation: .claude/docs/[branch-name]/index.md
-
-   🎯 Quick Start:
-   - [N] tasks identified (see docs for details)
-   - [Key insight or first step from analysis]
 
    Next steps:
-   - Review documentation: cat .claude/docs/[branch-name]/index.md
-   - Start coding!
+   - Run `/prime-context [TICKET_ID]` for task understanding
    - When done, use '/finish-ticket' to clean up
    ```
 
@@ -214,7 +156,6 @@ Create or switch to a worktree for the specified ticket, fetch context from Line
 - **Worktree creation fails:** Display git error and suggest manual inspection
 - **Rebase conflicts:** Stop and instruct user to resolve manually
 - **Invalid ticket ID format:** "Error: Invalid ticket ID format. Expected format: PROJ-123"
-- **Documentation write fails:** Warn user but continue (not fatal)
 
 ## Edge Cases:
 
@@ -223,17 +164,12 @@ Create or switch to a worktree for the specified ticket, fetch context from Line
 - **Branch already exists:** If branch exists but not as worktree, error and suggest cleanup
 - **Main branch outdated:** If local main is behind origin, fetch first
 - **No Linear access:** If MCP tools unavailable, error with helpful message
-- **Documentation folder already exists:** Overwrite `index.md` with fresh analysis (ticket may have been updated); preserve any other files in the folder
-- **Empty ticket description:** Note it in documentation and ask user for clarification
+- **Documentation folder already exists:** Overwrite pointer file; preserve any other files in the folder
+- **Empty ticket description:** Note it in the pointer file and continue
 
 ## Important Notes:
 
 - Be informative but concise with progress messages
-- Show analysis progress so user knows command is working
-- Documentation should be actionable (tasks user can check off)
-- Use markdown checkboxes for tasks (integrates with future TodoWrite)
 - Never assume Docker switch - always ask first
 - Use relative paths when displaying to user for brevity
 - Validate ticket ID format before calling Linear API
-- Analysis happens AFTER worktree creation (user can Ctrl+C if impatient)
-- Documentation is local to worktree (deleted when worktree is cleaned up)
