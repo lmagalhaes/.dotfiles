@@ -85,6 +85,73 @@ fi
 # Get current working directory
 CWD="$(pwd -P)"
 
+# Resolve a session JSON file path from its ID.
+# Checks: branch subdir → any subdir → flat legacy layout.
+# Sets SESSION_FILE global; caller checks [ -f "$SESSION_FILE" ].
+_resolve_file() {
+  local sid="$1" branch="${2:-$CURRENT_BRANCH}"
+  SESSION_FILE=""
+  if [ -n "$branch" ] && [ -f "$SESSIONS_DIR/$branch/$sid.json" ]; then
+    SESSION_FILE="$SESSIONS_DIR/$branch/$sid.json"
+    return
+  fi
+  local _found
+  _found=$(find "$SESSIONS_DIR" -maxdepth 2 -name "$sid.json" 2>/dev/null | head -1)
+  if [ -n "$_found" ]; then
+    SESSION_FILE="$_found"
+    return
+  fi
+  SESSION_FILE="$SESSIONS_DIR/$sid.json"
+}
+
+# Compute staleness metadata for a session file.
+# Outputs JSON: age_days, commit_delta (-1 if no commit_hash),
+# start_here_exists, is_stale (age>3d or delta>20), is_suppressed (age>30d)
+_compute_session_meta() {
+  local session_file="$1"
+
+  local timestamp age_days=0
+  timestamp=$(jq -r '.timestamp // .session_date // ""' "$session_file")
+  if [ -n "$timestamp" ]; then
+    local clean_ts save_epoch
+    clean_ts=$(echo "$timestamp" | sed 's/\.[0-9]*//' | sed 's/+[0-9:]*$//' | sed 's/Z$//')
+    if save_epoch=$(date -j -f "%Y-%m-%dT%H:%M:%S" "$clean_ts" "+%s" 2>/dev/null); then
+      :
+    else
+      save_epoch=$(date -d "$timestamp" +%s 2>/dev/null || echo 0)
+    fi
+    age_days=$(( ($(date +%s) - save_epoch) / 86400 ))
+  fi
+
+  local commit_hash commit_delta=-1
+  commit_hash=$(jq -r '.commit_hash // ""' "$session_file")
+  if [ -n "$commit_hash" ] && git rev-parse --is-inside-work-tree &>/dev/null 2>&1; then
+    commit_delta=$(git rev-list --count "${commit_hash}..HEAD" 2>/dev/null || echo -1)
+  fi
+
+  local start_here start_here_exists=true
+  start_here=$(jq -r '.next_session.start_here // ""' "$session_file")
+  if [ -n "$start_here" ]; then
+    local path_part
+    path_part=$(echo "$start_here" | sed 's/[[:space:]].*//' | sed 's/(.*//' | sed 's/:[0-9]*$//')
+    if [[ "$path_part" == */* ]]; then
+      [ -f "${REPO_ROOT:-$(pwd -P)}/$path_part" ] || [ -f "$path_part" ] || start_here_exists=false
+    fi
+  fi
+
+  local is_stale=false is_suppressed=false
+  { [ "$age_days" -gt 3 ] || { [ "$commit_delta" -ge 0 ] && [ "$commit_delta" -gt 20 ]; }; } && is_stale=true
+  [ "$age_days" -gt 30 ] && is_suppressed=true
+
+  jq -n \
+    --argjson age_days "$age_days" \
+    --argjson commit_delta "$commit_delta" \
+    --argjson start_here_exists "$start_here_exists" \
+    --argjson is_stale "$is_stale" \
+    --argjson is_suppressed "$is_suppressed" \
+    '{age_days:$age_days,commit_delta:$commit_delta,start_here_exists:$start_here_exists,is_stale:$is_stale,is_suppressed:$is_suppressed}'
+}
+
 # Determine which branch to filter by
 if [ -n "$FILTER_BRANCH" ] && [ "$FILTER_BRANCH" != "__NEXT__" ]; then
   TARGET_BRANCH="$FILTER_BRANCH"
@@ -96,11 +163,11 @@ fi
 
 # Load specific session or latest N sessions
 if [ -n "$SESSION_ID" ]; then
-  # Load specific session
-  SESSION_FILE="$SESSIONS_DIR/$SESSION_ID.json"
+  # Load specific session - check branch subdir first, then flat (legacy)
+  _resolve_file "$SESSION_ID"
   if [ ! -f "$SESSION_FILE" ]; then
-    # List available sessions for error message
-    AVAILABLE=$(ls -1r "$SESSIONS_DIR"/session-*.json 2>/dev/null | head -5 | xargs -I{} basename {} .json | jq -R . | jq -s .)
+    # List available sessions from branch subdirs and flat layout
+    AVAILABLE=$(find "$SESSIONS_DIR" -maxdepth 2 -name "session-*.json" 2>/dev/null | sort -r | head -5 | xargs -I{} basename {} .json | jq -R . | jq -s .)
     jq -n --arg id "$SESSION_ID" --argjson available "$AVAILABLE" '{
       error: "session_not_found",
       message: ("Session not found: " + $id),
@@ -111,6 +178,7 @@ if [ -n "$SESSION_ID" ]; then
 
   # Get file size for display mode selection
   FILE_SIZE=$(wc -c < "$SESSION_FILE" | tr -d ' ')
+  META=$(_compute_session_meta "$SESSION_FILE")
 
   # Get session branch for mismatch detection
   SESSION_BRANCH=$(jq -r '.git_branch // "unknown"' "$SESSION_FILE")
@@ -133,6 +201,7 @@ if [ -n "$SESSION_ID" ]; then
     --argjson dir_mismatch "$DIR_MISMATCH" \
     --argjson size "$FILE_SIZE" \
     --argjson count 1 \
+    --argjson meta "$META" \
     --slurpfile session "$SESSION_FILE" \
     '{
       mode: (if $mode != "" then $mode else null end),
@@ -151,7 +220,8 @@ if [ -n "$SESSION_ID" ]; then
         data: $session[0],
         file_size: $size,
         completed_count: ($session[0].completed | length),
-        remaining_count: ($session[0].remaining | length)
+        remaining_count: ($session[0].remaining | length),
+        meta: $meta
       }]
     }'
 else
@@ -164,9 +234,10 @@ else
     BRANCH_LATEST=$(jq -r --arg branch "$TARGET_BRANCH" '.latest_by_branch[$branch] // empty' "$INDEX_FILE" 2>/dev/null)
 
     if [ -n "$BRANCH_LATEST" ]; then
-      SESSION_FILE="$SESSIONS_DIR/$BRANCH_LATEST.json"
+      _resolve_file "$BRANCH_LATEST" "$TARGET_BRANCH"
       if [ -f "$SESSION_FILE" ]; then
         FILE_SIZE=$(wc -c < "$SESSION_FILE" | tr -d ' ')
+        META=$(_compute_session_meta "$SESSION_FILE")
         SESSION_BRANCH=$(jq -r '.git_branch // "unknown"' "$SESSION_FILE")
         SESSION_DIR=$(jq -r '.working_directory // ""' "$SESSION_FILE")
 
@@ -178,6 +249,7 @@ else
           --arg target_branch "$TARGET_BRANCH" \
           --argjson size "$FILE_SIZE" \
           --argjson count 1 \
+          --argjson meta "$META" \
           --slurpfile session "$SESSION_FILE" \
           '{
             mode: (if $mode != "" then $mode else null end),
@@ -191,7 +263,8 @@ else
               data: $session[0],
               file_size: $size,
               completed_count: ($session[0].completed | length),
-              remaining_count: ($session[0].remaining | length)
+              remaining_count: ($session[0].remaining | length),
+              meta: $meta
             }]
           }'
         exit 0
@@ -218,9 +291,10 @@ else
     fi
 
     if [ -n "$FALLBACK_SESSION" ]; then
-      SESSION_FILE="$SESSIONS_DIR/$FALLBACK_SESSION.json"
+      _resolve_file "$FALLBACK_SESSION" "$TARGET_BRANCH"
       if [ -f "$SESSION_FILE" ]; then
         FILE_SIZE=$(wc -c < "$SESSION_FILE" | tr -d ' ')
+        META=$(_compute_session_meta "$SESSION_FILE")
         SESSION_BRANCH=$(jq -r '.git_branch // "unknown"' "$SESSION_FILE")
         SESSION_DIR=$(jq -r '.working_directory // ""' "$SESSION_FILE")
 
@@ -242,6 +316,7 @@ else
           --argjson legacy_mode "${LEGACY_MODE:-false}" \
           --argjson size "$FILE_SIZE" \
           --argjson count 1 \
+          --argjson meta "$META" \
           --slurpfile session "$SESSION_FILE" \
           '{
             mode: (if $mode != "" then $mode else null end),
@@ -262,7 +337,8 @@ else
               data: $session[0],
               file_size: $size,
               completed_count: ($session[0].completed | length),
-              remaining_count: ($session[0].remaining | length)
+              remaining_count: ($session[0].remaining | length),
+              meta: $meta
             }]
           }'
         exit 0
@@ -317,18 +393,21 @@ else
   # Build sessions array
   SESSIONS_JSON="[]"
   for sid in $SESSION_IDS; do
-    SESSION_FILE="$SESSIONS_DIR/$sid.json"
+    _resolve_file "$sid" "$TARGET_BRANCH"
     [ -f "$SESSION_FILE" ] || continue
     FILE_SIZE=$(wc -c < "$SESSION_FILE" | tr -d ' ')
+    META=$(_compute_session_meta "$SESSION_FILE")
 
     SESSION_JSON=$(jq -n \
       --argjson size "$FILE_SIZE" \
+      --argjson meta "$META" \
       --slurpfile session "$SESSION_FILE" \
       '{
         data: $session[0],
         file_size: $size,
         completed_count: ($session[0].completed | length),
-        remaining_count: ($session[0].remaining | length)
+        remaining_count: ($session[0].remaining | length),
+        meta: $meta
       }')
 
     SESSIONS_JSON=$(echo "$SESSIONS_JSON" | jq --argjson s "$SESSION_JSON" '. + [$s]')
