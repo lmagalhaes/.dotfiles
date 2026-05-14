@@ -594,115 +594,87 @@ Start with ticket metadata (ID, status, Linear URL), then a 1–2 sentence summa
 
 ---
 
-## Session Management (Automatic + Optimized)
+## Session Management
 
-### Commands (All use Haiku model for 80% cost reduction)
+### Commands
 
-**`/session-status`** - Check token usage, session health, get recommendations (~800 tokens)
-**`/wrap-session`** - Save session context (compressed format, ~800-1k tokens)
-**`/load-session [N]`** - Restore context (compressed display, ~600-800 tokens)
+**`/session-status`** - Check token usage, session health, get recommendations
+**`/wrap-session`** - Save session context to branch-keyed file
+**`/wrap-session --preview`** - Show what would be saved without writing
+**`/load-session`** - Show 3-line hint (default); `--full` for full content
 
-### Automatic Session Loading (MANDATORY)
+### Automatic Session Loading (Hint-only)
 
 **At the START of EVERY conversation in a project directory:**
 
-1. Check if `.claude/sessions/index.json` exists
-2. If exists: Automatically run `/load-session` (silent, compressed display)
-3. Display 3-5 line recap to user
-4. Load full context into agent memory (patterns, files, decisions)
-5. Proceed with user request
+1. Check if `.claude/sessions/<branch>/` exists (branch-keyed storage)
+2. If a session exists for the current branch, display a **3-line hint**:
+   - Session age + commit delta since save
+   - `start_here` value
+   - Count of open decisions + assumptions
+3. Do NOT load full session content — user runs `/load-session --full` if needed
+4. Proceed with user request
 
-**This is AUTOMATIC, not optional.** Sessions provide critical continuity context.
+**Hint format:**
+```
+Session: <branch> (saved Nd ago · M commits) — N decisions, P assumptions open
+Resume: <start_here value>
+Run /load-session --full for decisions and watch-outs
+```
 
-**Note:** Display mode auto-selects based on session size:
-- Small sessions (< 10KB): Expanded view (all details)
-- Large sessions (> 10KB): Compact view (summary + next steps)
-- Multiple sessions: Always compact
-- Override with `--full` or `--compact` flags
+Session auto-load is a **resume pointer only**. It is not a substitute for fresh task discovery.
+
+### Workflow
+
+1. **Environment:** `/start-ticket <id>` — worktree + rebase + pointer file
+2. **Context hint:** Auto-load shows 3-line summary (age, start_here, open counts)
+3. **Task understanding:** `/prime-context <id>` — fresh discovery from Linear/git/docs
+4. **Work:** Iterate; run `/session-status` to monitor token usage
+5. **Wrap:** At 150k tokens, `/wrap-session --preview` then `/wrap-session`
+
+**Critical ordering:** Run `/load-session` (or see the auto-hint) **before** `/prime-context` so prior decisions are in context when prime-context's clarifying questions are evaluated.
+
+**Task understanding is `/prime-context`'s job.** Do not skip it or substitute the session file for it.
 
 ### Task Agent Context Passing
 
-**Problem:** Task agents spawn without project context, waste 5k+ tokens re-reading files.
-
-**Solution:** Use compressed context file before spawning Task agents.
-
-**Workflow:**
-
-1. **Check if context exists:**
-   ```bash
-   # If task-context.md exists and is recent (< 1 day old)
-   if [ -f .claude/task-context.md ]; then
-       # Read and use it
-   else
-       # Generate from latest session
-       # Or run /wrap-session first
-   fi
-   ```
-
-2. **Before spawning Task agent:**
-   - Read `.claude/task-context.md` (if exists)
-   - Include in Task agent prompt as additional context
-   - **Example prompt:**
-     ```
-     Task: Explore authentication implementation
-
-     Context from previous session:
-     - Current focus: Refactoring auth module
-     - Key pattern: Use AuthService singleton
-     - Critical file: src/auth/AuthService.ts
-     - Watch out: Token refresh logic has edge cases
-     ```
-
-3. **After Task agent completes:**
-   - Context file can remain (useful for multiple Task agents)
-   - Will be updated on next `/wrap-session`
-
-**Token Savings:**
-- Reading task-context.md: ~200-300 tokens
-- Without context: Task agent reads 10-20 files = 5k+ tokens
-- **Savings: ~4.7k-4.8k tokens per Task agent spawn** (95%+ reduction)
-
-**When to generate:**
-- Automatically created by `/wrap-session`
-- Manually: Extract from latest session in `.claude/sessions/`
-- Template: `~/.claude/templates/task-context.md`
+When spawning Task agents, extract relevant fields from the session JSON and pass them directly in the agent prompt. Do not use a `task-context.md` intermediary. Session JSON is already compact; include only the fields the agent needs (e.g., `watch_out`, `decisions`, `next_session.start_here`).
 
 ### Auto-Wrap Triggers
 
 **Token usage thresholds (monitored by `/session-status`):**
-- 150k tokens: Strongly suggest `/wrap-session` with preview
+- 150k tokens: Strongly suggest `/wrap-session --preview` then `/wrap-session`
 - **Note:** Context overflow typically occurs at ~150k, not 200k limit
-
-**When wrapping:**
-- Compressed format captures only actionable context
-- Max 5 items per array (patterns, tasks, files)
-- Max 50 words per pattern
-- Removes low-value fields (tool_usage, duration, etc.)
-- Uses relative file paths
-- Focus: continuity over documentation
-
-### Workflow
-
-1. **Start:** Sessions auto-load (you see 3-5 line recap)
-2. **During:** Run `/session-status` to monitor token usage
-3. **At 150k:** `/wrap-session` with preview of what will be captured
-4. **New session:** Auto-loads previous context automatically
 
 ### Session Storage
 
-- **Git repos:** `.claude/sessions/` in repo root
-- **Worktrees:** Shared across all worktrees automatically
-- **Non-git:** `{working_directory}/.claude/sessions/`
-- **Dotfiles:** `~/.claude/sessions/` (global)
+- **Branch-keyed:** `.claude/sessions/<branch>/session-YYYY-MM-DD-HHMMSS.json`
+- **Git repos:** Stored at repo root `.claude/sessions/`
+- **Worktrees:** Each branch has its own subdirectory (filesystem-enforced isolation)
+- **Dotfiles:** `~/.claude/sessions/<branch>/`
 
-### Optimization Benefits
+### Auto-Memory vs. Session File Boundaries
 
-**Token savings per cycle:**
-- Haiku model: 80% cost reduction
-- Compressed schema: 75% size reduction
-- Auto-load: Saves 5-10k tokens in context gathering
-- Task context: Saves 5k tokens per Task agent spawn
-- **Total: ~91% reduction** (10k → 1k tokens per cycle)
+These two systems serve different scopes. Do not blur them.
+
+| | Session file | Auto-memory |
+|---|---|---|
+| **Scope** | Branch-local handoff | Project-wide, durable |
+| **Lifetime** | Current ticket/branch | Across branches and sessions |
+| **Examples** | Decisions, dead-ends, watch-outs for this ticket | Repeated user constraints, architectural patterns |
+
+**What belongs in session files (not auto-memory):**
+- In-flight task state for the current branch
+- Branch-local decisions and rationale
+- Session resume pointers (`start_here`)
+- Assumptions and open questions from this ticket's prime-context run
+
+**What belongs in auto-memory (not session files):**
+- Cross-branch patterns that apply project-wide
+- Repeated user constraints Claude should always follow
+- Long-lived architectural decisions (not ticket-specific)
+
+**Schema decision rule:** A field belongs in the session file if it requires a prior conversation to reconstruct. If `prime-context` can regenerate it from git/Linear/docs, it does not belong in the session file.
 
 See `~/.claude/commands/README.md` for detailed documentation.
 
@@ -719,6 +691,15 @@ See `~/.claude/commands/README.md` for detailed documentation.
 ---
 
 ## Changelog
+
+**v2.5** - 2026-05-14
+- 🎯 **Session Management Refactor:** Cleaner boundaries, hint-only auto-load
+- **Hint-only auto-load:** Session start now emits 3-line hint (age, start_here, open counts) instead of full replay
+- **Workflow sequence clarified:** start-ticket → load-session (hint) → prime-context → work → wrap-session
+- **task-context.md removed:** Pass session JSON fields directly to Task agents instead
+- **Auto-memory vs session file boundaries:** New section clarifying what goes where and why
+- **Branch-keyed storage documented:** Session paths updated to reflect filesystem-level branch isolation
+- **Schema decision rule added:** If prime-context can regenerate it, it doesn't belong in the session file
 
 **v2.4** - 2026-02-26
 - ⚡ **Performance Tools Preferences:** Added comprehensive section for installed performance tools
@@ -775,6 +756,8 @@ See `~/.claude/commands/README.md` for detailed documentation.
 
 ---
 
-**Version:** 2.4 (Performance Tools + Optimized Session Management)
-**Last Updated:** 2026-02-26
+**Version:** 2.5 (Session Management Refactor — Hint-only + Boundaries)
+**Last Updated:** 2026-05-14
 **Token Budget:** ~4k (core only), ~7-10k (with typical contexts)
+
+@RTK.md
