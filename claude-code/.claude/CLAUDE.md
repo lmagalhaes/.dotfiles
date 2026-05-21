@@ -52,9 +52,16 @@
 
 ## Tool Preferences (Bash)
 
-Prefer: `rg` (grep), `fd` (find), `bat` (cat), `eza` (ls), `jq` (JSON), `yq` (YAML),
-`delta` (git diff), `duf` (df), `zoxide` (cd), `pigz` (gzip), `pv` (progress).
 Prefer Claude tools (Read, Grep, Glob) over Bash when available.
+
+When Bash is needed, prefer these over standard equivalents:
+- `rg` over grep — faster, `.gitignore`-aware, auto no-color
+- `fd` over find — cleaner path output, saner defaults
+- `jq` for JSON, `yq` for YAML — filter/extract instead of dumping raw content
+- `duf` over df, `pigz` over gzip, `pv` for progress
+
+Human-only tools (presentation value only, never use in Bash tool calls):
+- `bat` (use `cat` instead), `eza` (use `ls`), `delta` (use `git --no-pager diff`)
 
 ---
 
