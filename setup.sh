@@ -21,7 +21,7 @@ fi
 # Change to dotfiles directory (stow requires this)
 cd "$DOTFILES"
 
-# Stow packages
+# Stow packages (target: $HOME)
 echo "Installing packages with stow..."
 PACKAGES=("vim" "bash" "tmux" "claude-code" "readline" "ghostty")
 
@@ -33,6 +33,19 @@ for package in "${PACKAGES[@]}"; do
     echo "  Warning: $package directory not found, skipping"
   fi
 done
+
+# Stow packages with non-HOME targets
+echo ""
+echo "Installing packages with custom stow targets..."
+
+RTK_TARGET="$HOME/Library/Application Support/rtk"
+if [ -d "rtk" ]; then
+  mkdir -p "$RTK_TARGET"
+  echo "  Stowing rtk -> $RTK_TARGET"
+  stow -R --target "$RTK_TARGET" rtk
+else
+  echo "  Warning: rtk directory not found, skipping"
+fi
 
 echo ""
 
