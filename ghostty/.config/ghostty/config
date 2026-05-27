@@ -10,3 +10,4 @@ keybind = shift+enter=text:\x1b[13;2u
 
 # Ctrl+Enter: submit/execute
 keybind = ctrl+enter=text:\x1b[13;5u
+

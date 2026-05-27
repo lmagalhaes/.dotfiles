@@ -41,6 +41,9 @@ defaults write com.apple.sound.beep.feedback -bool false
 #sudo nvram SystemAudioVolume=" "
 #sudo nvram StartupMute=%01
 
+# Disable "Automatically adjust brightness"
+sudo defaults write /Library/Preferences/com.apple.CoreBrightness.plist "DisplayPreferences" -dict-add "AutoBrightnessEnable" -bool false
+
 # Menu bar: show battery percentage
 defaults write com.apple.menuextra.battery ShowPercent YES
 
