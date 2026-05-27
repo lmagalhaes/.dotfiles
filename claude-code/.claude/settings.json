@@ -34,6 +34,34 @@
       "Write(/Users/lmagalhaes/.claude/sessions/**)",
       "Write(/Users/lmagalhaes/.dotfiles/.claude/sessions/**)",
       "Write(**/.claude/sessions/**)"
+    ],
+    "deny": [
+      "Read(./secrets/**)",
+      "Read(./config/credentials.json)",
+      "Read(~/.env)",
+      "Read(~/.env.*)",
+      "Read(~/.netrc)",
+      "Read(~/.ssh/id_*)",
+      "Read(~/.ssh/*.pem)",
+      "Read(~/.ssh/*.key)",
+      "Read(~/.ssh/authorized_keys)",
+      "Read(~/.aws/**)",
+      "Read(~/.config/gcloud/**)",
+      "Read(~/.azure/**)",
+      "Read(~/.npmrc)",
+      "Read(~/.pypirc)",
+      "Read(~/.my.cnf)",
+      "Read(~/.pgpass)",
+      "Read(~/.docker/config.json)",
+      "Read(~/.kube/**)",
+      "Read(~/.config/op/**)",
+      "Read(~/.op/**)",
+      "Read(~/.vault-token)",
+      "Read(~/.config/vault/**)",
+      "Read(~/.codex/auth.json)",
+      "Read(~/.codex/.credentials.json)",
+      "Read(~/.claude/**/secrets/**)",
+      "Read(~/.mcp/**/secrets/**)"
     ]
   },
   "hooks": {
@@ -46,6 +74,17 @@
           }
         ]
       }
+    ],
+    "PreToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "/Users/lmagalhaes/.claude/hooks/rtk-rewrite.sh"
+          }
+        ]
+      }
     ]
   },
   "statusLine": {
@@ -53,10 +92,21 @@
     "command": "bash ~/.claude/statusline-command.sh"
   },
   "enabledPlugins": {
-    "coderabbit@claude-plugins-official": true
+    "coderabbit@claude-plugins-official": true,
+    "zoom-plugin@claude-plugins-official": false,
+    "prime-context@workyard": true
   },
+  "extraKnownMarketplaces": {
+    "workyard": {
+      "source": {
+        "source": "directory",
+        "path": "/Users/lmagalhaes/workspace/workyard/ai"
+      }
+    }
+  },
+  "theme": "dark-ansi",
+  "editorMode": "vim",
   "feedbackSurveyState": {
     "lastShownTime": 1754024052158
-  },
-  "editorMode": "vim"
+  }
 }
