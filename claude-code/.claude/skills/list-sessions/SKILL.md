@@ -1,5 +1,7 @@
 ---
+name: list-sessions
 description: List available sessions for the current project
+argument-hint: "[<count> | all]"
 model: haiku
 allowed-tools:
   - Bash

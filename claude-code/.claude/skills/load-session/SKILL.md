@@ -1,5 +1,7 @@
 ---
+name: load-session
 description: Load and display context from previous session(s) for continuity
+argument-hint: "[--full | --all | --branch <name> | <session-id>]"
 model: haiku
 allowed-tools:
   - Bash

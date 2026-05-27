@@ -1,5 +1,7 @@
 ---
+name: wrap-session
 description: Create a session retrospective with key context and recommendations for continuity
+argument-hint: "[--preview]"
 model: haiku
 allowed-tools:
   - Bash

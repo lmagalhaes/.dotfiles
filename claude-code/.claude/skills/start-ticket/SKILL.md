@@ -1,5 +1,7 @@
 ---
+name: start-ticket
 description: Create/switch to worktree for a Linear ticket
+argument-hint: <ticket-id> e.g. PLA-123
 model: sonnet
 allowed-tools:
   - Bash
@@ -114,28 +116,7 @@ Create or switch to a worktree for the specified ticket, fetch context from Line
    - If rebased successfully:
      - Display: "✓ Rebased with main"
 
-### 9. Create Docs Pointer:
-
-   Write a minimal pointer file (3 fields: ticket_id, branch, linear_url):
-   ```bash
-   ~/.claude/scripts/init-worktree-docs.sh \
-     "[branch-name]" \
-     "[TICKET_ID]" \
-     "[Title]" \
-     "[Status]" \
-     "[Linear URL]" \
-     ""
-   ```
-
-   This creates `.claude/docs/[branch-name]/index.md` with `ticket_id`, `branch`, and `linear_url`.
-   Show: "✓ Pointer created at `.claude/docs/[branch-name]/index.md`"
-
-### 10. Ask About Docker:
-   - Ask user: "Switch Docker containers to this worktree? (This will restart containers)"
-     - If yes: Run `git wt-docker [branch-name]`
-     - If no: Display "Docker containers unchanged. Run 'git wt-docker [branch-name]' when ready."
-
-### 11. Final Summary:
+### 9. Final Summary:
    ```
    ✅ Worktree ready!
 
@@ -144,7 +125,6 @@ Create or switch to a worktree for the specified ticket, fetch context from Line
    Ticket: [TICKET_ID] - [Title]
 
    Next steps:
-   - Run `/prime-context [TICKET_ID]` for task understanding
    - When done, use '/finish-ticket' to clean up
    ```
 
@@ -164,12 +144,9 @@ Create or switch to a worktree for the specified ticket, fetch context from Line
 - **Branch already exists:** If branch exists but not as worktree, error and suggest cleanup
 - **Main branch outdated:** If local main is behind origin, fetch first
 - **No Linear access:** If MCP tools unavailable, error with helpful message
-- **Documentation folder already exists:** Overwrite pointer file; preserve any other files in the folder
-- **Empty ticket description:** Note it in the pointer file and continue
-
 ## Important Notes:
 
 - Be informative but concise with progress messages
-- Never assume Docker switch - always ask first
 - Use relative paths when displaying to user for brevity
 - Validate ticket ID format before calling Linear API
+- `.env` is automatically copied to the worktree by `git wt-create` — no manual copy needed

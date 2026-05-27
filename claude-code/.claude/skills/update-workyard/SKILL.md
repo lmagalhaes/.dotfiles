@@ -1,5 +1,10 @@
 ---
+name: update-workyard
 description: Update all Workyard projects (crew-api, web-app, web-app-v2) with latest changes and dependencies
+argument-hint: (no arguments)
+model: haiku
+allowed-tools:
+  - Bash
 ---
 
 Update all Workyard projects by following these steps:

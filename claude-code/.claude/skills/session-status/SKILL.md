@@ -1,5 +1,7 @@
 ---
+name: session-status
 description: Analyze current session health, token usage, and provide recommendations
+argument-hint: (no arguments)
 model: haiku
 allowed-tools:
   - Bash
