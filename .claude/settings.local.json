@@ -19,7 +19,12 @@
       "Bash(docker ps:*)",
       "Bash(git wt-docker:*)",
       "Bash(wc:*)",
-      "Bash(git symbolic-ref *)"
+      "Bash(git symbolic-ref *)",
+      "Bash(eza *)",
+      "Bash(rtk wc *)",
+      "Bash(rtk grep *)",
+      "Bash(rtk tree *)",
+      "Bash(rtk read *)"
     ]
   }
 }
