@@ -13,6 +13,7 @@ Keep succinct — the HOW is in the code.
 
 - Explain WHAT changed and WHY
 - No AI co-author signatures
+- No ticket IDs in commit messages
 - Atomic commits when logical; group related changes
 - Pass message via HEREDOC to preserve formatting
 
