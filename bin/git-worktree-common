@@ -113,15 +113,15 @@ get_branch_slug() {
     local branch="$1"
     local slug
 
-    # Use full branch name, sanitized for URLs/containers
-    # - Lowercase
-    # - Replace / with -
-    # - Replace _ with -
-    # - Remove any characters that aren't alphanumeric or hyphen
     slug=$(echo "$branch" | tr '[:upper:]' '[:lower:]' | tr '/_' '--' | sed 's/[^a-z0-9-]//g')
 
     # Remove leading/trailing hyphens and collapse multiple hyphens
     slug=$(echo "$slug" | sed 's/--*/-/g; s/^-//; s/-$//')
+
+    # Cap at 45 chars so hostnames like api-{slug}.workyard.test stay within
+    # Linux's 64-char sethostname limit (4 + 45 + 14 = 63)
+    slug="${slug:0:45}"
+    slug="${slug%-}"
 
     echo "$slug"
 }
