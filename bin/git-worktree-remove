@@ -6,9 +6,6 @@
 # Source common functions and variables
 source "$(dirname "$0")/git-worktree-common"
 
-# Docker directory
-DOCKER_DIR=~/workspace/workyard/dev-env/workyard-api
-
 # Show help
 if [ $# -eq 0 ] || [ "$1" = "-h" ] || [ "$1" = "--help" ]; then
     echo "Usage: git worktree-remove <branch-name-or-path> [options]"
@@ -27,10 +24,9 @@ if [ $# -eq 0 ] || [ "$1" = "-h" ] || [ "$1" = "--help" ]; then
     echo "  git worktree-remove .worktrees/WORK-123-feature"
     echo "  git worktree-remove WORK-123-feature --force"
     echo ""
-    echo "This command will:"
-    echo "  - Stop and remove worktree's Docker containers"
-    echo "  - Delete the compose.worktree.{slug}.yaml file"
-    echo "  - Remove the git worktree"
+    echo "Project hooks:"
+    echo "  If .worktree-hooks/post-remove exists in the repo root, it is called"
+    echo "  before git worktree removal with BRANCH_NAME and BRANCH_SLUG exported."
     exit 0
 fi
 
@@ -62,46 +58,24 @@ if [ ! -d "$WORKTREE_PATH" ]; then
     error "Worktree not found: $WORKTREE_PATH"
 fi
 
-# Get branch slug for container naming
+# Get branch slug for use in hooks
 BRANCH_SLUG=$(get_branch_slug "$BRANCH_NAME")
+WORKTREE_DIR="$WORKTREE_PATH"
 
-# Stop and remove Docker containers if they exist
-if [ -d "$DOCKER_DIR" ]; then
-    COMPOSE_FILE="$DOCKER_DIR/compose.worktree.${BRANCH_SLUG}.yaml"
-    PROJECT_NAME="workyard-api-${BRANCH_SLUG}"
-
-    if [ -f "$COMPOSE_FILE" ]; then
-        info "Stopping Docker containers for: $BRANCH_SLUG"
-        cd "$DOCKER_DIR"
-
-        # Stop and remove containers
-        if docker compose -f docker-compose.yml -f "compose.worktree.${BRANCH_SLUG}.yaml" \
-            --project-name "$PROJECT_NAME" down 2>/dev/null; then
-            success "Containers stopped"
-        else
-            warning "Failed to stop containers (may not have been running)"
-        fi
-
-        # Remove compose file
-        info "Removing compose file: compose.worktree.${BRANCH_SLUG}.yaml"
-        rm -f "$COMPOSE_FILE"
-        success "Compose file removed"
-
-        cd - >/dev/null
-    else
-        info "No compose file found for $BRANCH_SLUG - skipping Docker cleanup"
-    fi
+# Run project post-remove hook if it exists
+POST_REMOVE_HOOK="$REPO_ROOT/.worktree-hooks/post-remove"
+if [ -x "$POST_REMOVE_HOOK" ]; then
+    info "Running post-remove hook..."
+    export BRANCH_NAME BRANCH_SLUG WORKTREE_DIR REPO_ROOT
+    bash "$POST_REMOVE_HOOK"
 fi
 
 # Remove the worktree
 info "Removing worktree: $BRANCH_NAME"
 git worktree remove "$WORKTREE_PATH" "$@"
 
-success "Worktree removed successfully"
+success "Worktree removed"
 echo ""
 echo "Removed:"
 echo "  Worktree: $WORKTREE_PATH"
 echo "  Branch:   $BRANCH_NAME"
-if [ -d "$DOCKER_DIR" ]; then
-    echo "  Containers: workyard-api-${BRANCH_SLUG}"
-fi

@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# git-worktree-create - Create a new git worktree with parallel Docker support
+# git-worktree-create - Create a new git worktree
 #
 # Usage: git worktree-create <branch-name> [base-branch]
 #        git worktree-create WORK-123-oauth-integration
@@ -22,16 +22,9 @@ if [ $# -eq 0 ] || [ "$1" = "-h" ] || [ "$1" = "--help" ]; then
     echo "  git worktree-create WORK-123-oauth-integration"
     echo "  git worktree-create WORK-123-oauth-integration main"
     echo ""
-    echo "Features:"
-    echo "  - Creates worktree in hidden .worktrees/ folder"
-    echo "  - Copies PHPStorm settings from main worktree"
-    echo "  - Generates Docker compose file for parallel containers"
-    echo "  - Starts worktree containers (main containers keep running)"
-    echo "  - Installs PHP dependencies in container"
-    echo ""
-    echo "Docker URLs:"
-    echo "  Main:     https://api.workyard.test"
-    echo "  Worktree: https://api-{slug}.workyard.test"
+    echo "Project hooks:"
+    echo "  If .worktree-hooks/post-create exists in the repo root, it is called"
+    echo "  after the worktree is created with BRANCH_NAME and BRANCH_SLUG exported."
     exit 0
 fi
 
@@ -45,7 +38,7 @@ BASE_BRANCH="${2:-main}"
 REPO_ROOT=$(get_repo_root_logical)
 WORKTREE_DIR="$REPO_ROOT/.worktrees/$BRANCH_NAME"
 
-# Get branch slug for container naming
+# Get branch slug for use in hooks
 BRANCH_SLUG=$(get_branch_slug "$BRANCH_NAME")
 
 # Check if worktree already exists
@@ -73,78 +66,20 @@ else
     git worktree add -b "$BRANCH_NAME" "$WORKTREE_DIR" "$BASE_BRANCH"
 fi
 
-success "Worktree created successfully"
+success "Worktree created"
 
-# Copy .idea/ directory from main worktree if it exists
-if [ -d "$REPO_ROOT/.idea" ]; then
-    info "Copying PHPStorm settings from main worktree"
-    cp -r "$REPO_ROOT/.idea" "$WORKTREE_DIR/"
-    success "PHPStorm settings copied"
-else
-    info "No .idea/ directory found in main worktree"
+# Copy .env from repo root if it exists and worktree doesn't have one
+if [ -f "$REPO_ROOT/.env" ] && [ ! -f "$WORKTREE_DIR/.env" ]; then
+    cp "$REPO_ROOT/.env" "$WORKTREE_DIR/.env"
+    success ".env copied from repo root"
 fi
 
-# Generate Docker compose file and start containers
-DOCKER_DIR=~/workspace/workyard/dev-env/workyard-api
-TEMPLATE_FILE=~/.dotfiles/templates/compose.worktree.template.yaml
-
-if [ -d "$DOCKER_DIR" ] && [ -f "$TEMPLATE_FILE" ]; then
-    echo ""
-    info "Setting up Docker for parallel worktree..."
-
-    # Calculate paths
-    MOUNT_PATH="./crew-api/.worktrees/$BRANCH_NAME"
-    GIT_DIR="/opt/crew-api.git/worktrees/$BRANCH_NAME"
-    COMPOSE_FILE="$DOCKER_DIR/compose.worktree.${BRANCH_SLUG}.yaml"
-
-    # Generate compose file from template
-    info "Generating compose file: compose.worktree.${BRANCH_SLUG}.yaml"
-    sed -e "s|{{SLUG}}|${BRANCH_SLUG}|g" \
-        -e "s|{{BRANCH_NAME}}|${BRANCH_NAME}|g" \
-        -e "s|{{MOUNT_PATH}}|${MOUNT_PATH}|g" \
-        -e "s|{{GIT_DIR}}|${GIT_DIR}|g" \
-        "$TEMPLATE_FILE" > "$COMPOSE_FILE"
-
-    success "Compose file created"
-
-    # Start worktree containers (main containers keep running)
-    info "Starting worktree containers..."
-    cd "$DOCKER_DIR"
-
-    PROJECT_NAME="workyard-api-${BRANCH_SLUG}"
-    if docker compose -f docker-compose.yml -f "compose.worktree.${BRANCH_SLUG}.yaml" \
-        --project-name "$PROJECT_NAME" up -d; then
-        success "Containers started: $PROJECT_NAME"
-
-        # Wait for containers to be healthy
-        info "Waiting for containers to be ready..."
-        sleep 5
-
-        # Install PHP dependencies in container
-        info "Installing PHP dependencies..."
-        if docker compose -f docker-compose.yml -f "compose.worktree.${BRANCH_SLUG}.yaml" \
-            --project-name "$PROJECT_NAME" \
-            exec -T workyard-api composer install --no-interaction; then
-            success "Dependencies installed successfully"
-        else
-            warning "Failed to install dependencies - run manually:"
-            echo "  git wt-docker exec workyard-api composer install"
-        fi
-    else
-        warning "Failed to start containers - run manually:"
-        echo "  cd $WORKTREE_DIR && git wt-docker up -d"
-    fi
-
-    cd - >/dev/null
-else
-    if [ ! -d "$DOCKER_DIR" ]; then
-        info "Docker directory not found - skipping container setup"
-    fi
-    if [ ! -f "$TEMPLATE_FILE" ]; then
-        info "Docker template not found - skipping container setup"
-    fi
-    echo "  To set up Docker manually:"
-    echo "  cd $WORKTREE_DIR && git wt-docker init && git wt-docker up -d"
+# Run project post-create hook if it exists
+POST_CREATE_HOOK="$REPO_ROOT/.worktree-hooks/post-create"
+if [ -x "$POST_CREATE_HOOK" ]; then
+    info "Running post-create hook..."
+    export BRANCH_NAME BRANCH_SLUG WORKTREE_DIR REPO_ROOT
+    bash "$POST_CREATE_HOOK"
 fi
 
 echo ""
@@ -152,8 +87,6 @@ success "All done!"
 echo ""
 echo "Worktree: $WORKTREE_DIR"
 echo "Branch:   $BRANCH_NAME"
-echo "Slug:     $BRANCH_SLUG"
-echo "URL:      https://api-${BRANCH_SLUG}.workyard.test"
 echo ""
 echo "Next steps:"
 echo "  cd $WORKTREE_DIR"
