@@ -7,6 +7,7 @@ allowed-tools:
   - Bash
   - Read
   - Write
+  - mcp__claude_ai_Linear__get_issue
   - mcp__linear__get_issue
 ---
 
@@ -48,7 +49,8 @@ Create or switch to a worktree for the specified ticket, fetch context from Line
    - If no argument: Error "Usage: /start-ticket <ticket-id>"
 
 ### 2. Fetch Ticket Details from Linear:
-   - Use `mcp__linear__get_issue` with the ticket ID
+   - Call `mcp__claude_ai_Linear__get_issue` with the ticket ID; if unavailable, try `mcp__linear__get_issue`
+   - If neither is available: error "Linear MCP tool not found — ensure the Linear MCP server is configured and its tool name is listed in allowed-tools"
    - Extract:
      - Ticket identifier (ID)
      - Ticket title
@@ -74,7 +76,7 @@ Create or switch to a worktree for the specified ticket, fetch context from Line
      - Format: `[TICKET_ID]-[concise-title]`
      - Convert to lowercase, replace spaces with hyphens
      - Remove special characters (keep alphanumeric and hyphens)
-     - Truncate to ~50 chars total
+     - Truncate to 45 chars total
 
 ### 4. Check Repository Context:
    - Verify in a git repository: `git rev-parse --git-dir`
@@ -115,6 +117,11 @@ Create or switch to a worktree for the specified ticket, fetch context from Line
      - Display: "✓ Already up-to-date with main"
    - If rebased successfully:
      - Display: "✓ Rebased with main"
+     - Check if dependency manifests changed:
+       ```bash
+       git diff ORIG_HEAD..HEAD -- package.json composer.json go.mod Gemfile 2>/dev/null
+       ```
+     - If any changed: warn "Dependency manifests changed — re-run install before proceeding"
 
 ### 9. Final Summary:
    ```
@@ -150,3 +157,4 @@ Create or switch to a worktree for the specified ticket, fetch context from Line
 - Use relative paths when displaying to user for brevity
 - Validate ticket ID format before calling Linear API
 - `.env` is automatically copied to the worktree by `git wt-create` — no manual copy needed
+- **Taskfile is not worktree-aware:** `task <name>` targets the main-branch environment, not the current worktree. Route commands through `git wt-docker exec <service> <cmd>` instead.

@@ -8,17 +8,6 @@ allowed-tools:
   - Read
 ---
 
-# 💡 MODEL OPTIMIZATION
-
-This command uses **Haiku model** for cost efficiency:
-- Task is simple git operations and validation
-- No complex reasoning required - just safety checks and cleanup
-- 80% cost reduction vs Sonnet (~$0.25/M vs $3/M input tokens)
-
-**Expected token usage:** ~500-800 tokens
-
----
-
 # ⚠️ EXECUTION PERMISSIONS - READ THIS FIRST
 
 **DO NOT ASK FOR PERMISSION. YOU HAVE FULL AUTHORIZATION TO EXECUTE ALL REQUIRED COMMANDS.**
@@ -58,7 +47,7 @@ Verify work is committed, safely exit the worktree, and delete it. This command 
 
 ### 2. Get Worktree Information:
    - Get current branch: `git branch --show-current`
-   - Extract ticket ID from branch name (part before first hyphen)
+   - Extract ticket ID from branch name — match `[a-z]+-[0-9]+` pattern (e.g. `pla-123` from `pla-123-feature-name`)
    - Get repository root: `git rev-parse --show-toplevel`
    - Calculate parent repo path: Remove `.worktrees/[branch-name]` from current path
 
@@ -96,8 +85,19 @@ Verify work is committed, safely exit the worktree, and delete it. This command 
 
 ### 6. Delete Local Branch:
    - Run: `git branch -d [branch-name]`
-   - If it fails (unmerged), try `git branch -D [branch-name]` only if user confirms
-   - Display: "✓ Local branch deleted"
+   - If it succeeds: display "✓ Local branch deleted"
+   - If it fails (exit code non-zero):
+     - Check PR state via `gh` if available:
+       ```bash
+       gh pr list --state merged --head [branch-name] --json number --jq 'length' 2>/dev/null
+       ```
+     - If result is `1` (merged PR found): run `git branch -D [branch-name]` and display "✓ Local branch deleted (squash/rebase merge detected)"
+     - Otherwise: display warning and stop:
+       ```
+       ⚠ Could not delete branch [branch-name] — it may not be merged yet.
+       If the PR is merged, run manually:
+         git branch -D [branch-name]
+       ```
 
 ### 7. Final Summary:
    ```

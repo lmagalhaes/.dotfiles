@@ -2,20 +2,50 @@
 
 ## Commit Messages
 
-Style: Descriptive (not Conventional Commits)
+Not Conventional Commits — no `feat:`, `fix:` prefixes.
+
+### Lifecycle
+
+- **During work:** commit freely at checkpoints — progress saves, WIP states. No message quality requirements.
+- **Before merging:** `git rebase -i origin/main` is required — squash noise, group related changes, write final messages. This is the gate.
+- **Merge:** rebase fast-forward — original commits land on main with SHAs intact, history is linear.
+
+### Format (final commits — post-cleanup, pre-merge)
 
 ```
-Brief summary of what and why changed
+Capitalize and summarize in 50 chars or less
 
-Optional body when needed for clarity.
-Keep succinct — the HOW is in the code.
+Explain the WHY in the body if it's not obvious from the change.
+Wrap body lines at 72 characters. The blank line separating
+summary from body is critical — tools like rebase get confused
+if they run together.
+
+- Bullet points are fine; use hyphens or asterisks
+- No blank lines between bullets
 ```
 
-- Explain WHAT changed and WHY
+### Rules
+
+- Imperative mood: "Fix bug" not "Fixed bug" or "Fixes bug"
+- No ticket IDs in the message
 - No AI co-author signatures
-- No ticket IDs in commit messages
-- Atomic commits when logical; group related changes
-- Pass message via HEREDOC to preserve formatting
+- Pass multi-line messages via HEREDOC to preserve formatting
+
+### Staging discipline
+
+- Never `git add .` or `git commit -a` — stage only files changed in this session
+- Group related changes in one commit; unrelated changes go in separate commits
+- Don't commit half-done work — each commit should leave the codebase in a working state
+
+### No noise commits
+
+- Incidental formatting/linting fixes belong squashed into the commit that introduced them
+- Exception: intentional, broad formatting or linting changes (whole module or project) stand on their own
+
+## Branch Naming
+
+Format: `[ticket-id]-[concise-title]` — lowercase, hyphens, max 45 chars.
+The 45-char cap is enforced by `git wt-create` via slug generation in `git-worktree-common`.
 
 ## Worktree Safety
 
@@ -34,38 +64,14 @@ git rev-list HEAD..origin/main --count   # commits behind
 ```
 If behind > 0 and ahead > 0, rebase before continuing.
 
-### After rebase
-
-Check if dependency manifests changed and warn to re-run install:
-```bash
-git diff ORIG_HEAD..HEAD -- composer.json package.json go.mod Gemfile 2>/dev/null
-```
-If any changed: warn the user before proceeding.
-
-### .env propagation
-
-Worktrees do not inherit `.env` from the repo root automatically. Before running any command in a new worktree:
-- Verify `.env` exists in the worktree root
-- If missing: copy from repo root (`cp $REPO_ROOT/.env $WORKTREE_DIR/.env`)
-
-### Container health polling
-
-Never use `sleep N` to wait for containers to be ready. Poll instead:
-```bash
-timeout 60 bash -c 'until [ "$(docker inspect --format="{{.State.Health.Status}}" CONTAINER)" = "healthy" ]; do sleep 1; done'
-```
-
-### Taskfile and worktrees
-
-Taskfile tasks (`task <name>`) target the main branch environment. In worktrees, route commands through `git wt-docker exec <service> <cmd>` instead. Taskfile is not worktree-aware.
-
 ## Dynamic Working Directory
 
 `cd` doesn't persist between Bash tool calls. Use absolute paths in each Bash call, or chain commands with `&&`.
 
 ## Dangerous Operations
 
-Before force-push, reset --hard, or branch deletion: confirm with user.
-Never skip hooks (--no-verify) unless explicitly requested.
-Never force-push main/master.
-Create new commits rather than amending, unless explicitly asked to amend.
+- Never force-push main/master
+- Feature branches after rebase: use `--force-with-lease` over `--force`; no confirmation needed
+- Before reset --hard or branch deletion: confirm with user
+- Never skip hooks (--no-verify) unless explicitly requested
+- Create new commits rather than amending, unless explicitly asked to amend
