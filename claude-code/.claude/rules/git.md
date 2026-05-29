@@ -47,22 +47,29 @@ if they run together.
 Format: `[ticket-id]-[concise-title]` — lowercase, hyphens, max 45 chars.
 The 45-char cap is enforced by `git wt-create` via slug generation in `git-worktree-common`.
 
-## Worktree Safety
+## When to rebase with origin/main
 
-- Never delete a worktree while pwd is inside it — cd out first
-- Always rebase with base branch before starting/resuming work (unless told otherwise)
-- Use `git wt-create` / `git wt-rm` rather than raw `git worktree` commands — preserves hook execution
-- Use /start-ticket <id> to create/switch; /finish-ticket to clean up
+Rebase in these situations — no need to ask:
 
-### When resuming a worktree
+- **Starting or resuming a session** — fetch and check divergence first; rebase if behind > 0
+- **Before opening or updating a PR** — ensures the branch is current and conflicts are resolved before review
+- **Before `git rebase -i`** — always sync with origin/main first so interactive cleanup targets a current base
 
-Show divergence before starting work:
+### Checking divergence
+
 ```bash
 git fetch origin
 git rev-list origin/main..HEAD --count   # commits ahead
 git rev-list HEAD..origin/main --count   # commits behind
 ```
-If behind > 0 and ahead > 0, rebase before continuing.
+
+If behind > 0: `git rebase origin/main`
+
+## Worktree Safety
+
+- Never delete a worktree while pwd is inside it — cd out first
+- Use `git wt-create` / `git wt-rm` rather than raw `git worktree` commands — preserves hook execution
+- Use /start-ticket <id> to create/switch; /finish-ticket to clean up
 
 ## Dynamic Working Directory
 
