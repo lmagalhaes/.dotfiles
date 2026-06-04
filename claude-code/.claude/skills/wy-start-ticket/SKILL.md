@@ -1,5 +1,5 @@
 ---
-name: start-ticket
+name: wy-start-ticket
 description: Create/switch to worktree for a Linear ticket
 argument-hint: <ticket-id> e.g. PLA-123
 model: sonnet
@@ -38,15 +38,15 @@ Create or switch to a worktree for the specified ticket, fetch context from Line
 
 ## Usage:
 
-- `/start-ticket PLA-123` - Start work on ticket PLA-123
-- `/start-ticket PROJ-456` - Start work on ticket PROJ-456
+- `/wy-start-ticket PLA-123` - Start work on ticket PLA-123
+- `/wy-start-ticket PROJ-456` - Start work on ticket PROJ-456
 
 ## Instructions:
 
 ### 1. Parse Arguments:
    - First argument is the ticket ID (required)
    - Validate format: Should match pattern like `PLA-123`, `PROJ-456` (letters-numbers)
-   - If no argument: Error "Usage: /start-ticket <ticket-id>"
+   - If no argument: Error "Usage: /wy-start-ticket <ticket-id>"
 
 ### 2. Fetch Ticket Details from Linear:
    - Call `mcp__claude_ai_Linear__get_issue` with the ticket ID; if unavailable, try `mcp__linear__get_issue`
@@ -132,7 +132,7 @@ Create or switch to a worktree for the specified ticket, fetch context from Line
    Ticket: [TICKET_ID] - [Title]
 
    Next steps:
-   - When done, use '/finish-ticket' to clean up
+   - When done, use '/wy-finish-ticket' to clean up
    ```
 
 ## Error Handling:

@@ -1,5 +1,5 @@
 ---
-name: list-sessions
+name: wy-list-sessions
 description: List available sessions for the current project
 argument-hint: "[<count> | all]"
 model: haiku
@@ -28,7 +28,7 @@ Run the script and format the JSON output as a nice table:
 **Latest:** {latest}
 **Total:** {total} sessions
 
-💡 /load-session to load latest, /load-session {id} for specific
+💡 /wy-load-session to load latest, /wy-load-session {id} for specific
 ```
 
 **Rules:**

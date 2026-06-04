@@ -24,7 +24,8 @@
       "Bash(rtk wc *)",
       "Bash(rtk grep *)",
       "Bash(rtk tree *)",
-      "Bash(rtk read *)"
+      "Bash(rtk read *)",
+      "Skill(wy-list-sessions)"
     ]
   }
 }

@@ -1,5 +1,5 @@
 ---
-name: finish-ticket
+name: wy-finish-ticket
 description: Safely clean up a worktree after work is complete
 argument-hint: (no arguments)
 model: haiku
@@ -31,7 +31,7 @@ Verify work is committed, safely exit the worktree, and delete it. This command 
 
 ## Usage:
 
-- `/finish-ticket` - Clean up current worktree
+- `/wy-finish-ticket` - Clean up current worktree
 
 ## Instructions:
 

@@ -1,5 +1,5 @@
 ---
-name: load-session
+name: wy-load-session
 description: Load and display context from previous session(s) for continuity
 argument-hint: "[--full | --all | --branch <name> | <session-id>]"
 model: haiku
@@ -14,15 +14,15 @@ Load session data using the bash script and format output for the user.
 
 ## Usage
 
-- `/load-session` - Show 3-line hint for current branch (default)
-- `/load-session --full` - Full session details
-- `/load-session 3` - Hint for last 3 sessions for current branch
-- `/load-session --all` - Latest session from any branch (hint)
-- `/load-session --all 3` - Last 3 sessions from any branch
-- `/load-session --branch main` - Latest session for specific branch
-- `/load-session session-2026-01-12-143000` - Load specific session by ID
-- `/load-session --compact` - Compact view
-- `/load-session --summary` - Ultra-compact view
+- `/wy-load-session` - Show 3-line hint for current branch (default)
+- `/wy-load-session --full` - Full session details
+- `/wy-load-session 3` - Hint for last 3 sessions for current branch
+- `/wy-load-session --all` - Latest session from any branch (hint)
+- `/wy-load-session --all 3` - Last 3 sessions from any branch
+- `/wy-load-session --branch main` - Latest session for specific branch
+- `/wy-load-session session-2026-01-12-143000` - Load specific session by ID
+- `/wy-load-session --compact` - Compact view
+- `/wy-load-session --summary` - Ultra-compact view
 
 ## Instructions
 
@@ -35,8 +35,8 @@ Load session data using the bash script and format output for the user.
 ### 2. Handle errors
 
 If JSON contains `error` field:
-- `no_sessions_dir`: "No sessions found. Use `/wrap-session` to create one."
-- `no_index`: "No sessions recorded yet. Use `/wrap-session` after your session."
+- `no_sessions_dir`: "No sessions found. Use `/wy-wrap-session` to create one."
+- `no_index`: "No sessions recorded yet. Use `/wy-wrap-session` after your session."
 - `session_not_found`: Show message and list available sessions
 - `no_sessions`: "No session files found."
 - `no_branch_session`: "No session found for branch: {branch}. Available branches: {list}"
@@ -49,7 +49,7 @@ Run these checks in order, stopping at the first issue (unless `--full` was expl
 **a. Suppressed session** — if `sessions[0].meta.is_suppressed` is true AND mode is not `"full"`:
 ```
 > Session from {age_days}d ago has been auto-suppressed (>30 days old).
-> Use `/load-session --full` to view it anyway, or `/wrap-session` to save a fresh one.
+> Use `/wy-load-session --full` to view it anyway, or `/wy-wrap-session` to save a fresh one.
 ```
 Stop here.
 
@@ -62,7 +62,7 @@ Stop here.
 >
 > The loaded context may not apply to your current work.
 > Options:
-> - `/load-session --branch {current_branch}` to load current branch's session
+> - `/wy-load-session --branch {current_branch}` to load current branch's session
 > - Continue with caution (context may differ)
 ```
 
@@ -86,7 +86,7 @@ Stop here.
 **Resume:** {start_here}{phantom_suffix}
 {open_questions count} open questions · {decisions count} decisions · {watch_out count} watch-outs
 
-`/load-session --full` for complete context
+`/wy-load-session --full` for complete context
 ```
 
 - `commit_delta_suffix` = ` · {N} commits since save` if `commit_delta >= 0`, else omit
@@ -155,7 +155,7 @@ For sessions with **old schema** (has `summary`, `completed`, `remaining`, `patt
 **Resume:** {start_here}{phantom_marker}
 
 ---
-💡 Use `/load-session --full` for complete details
+💡 Use `/wy-load-session --full` for complete details
 ```
 
 ---
@@ -169,7 +169,7 @@ For sessions with **old schema** (has `summary`, `completed`, `remaining`, `patt
 **Resume:** {start_here}
 {first watch_out or first decision}
 
-💡 `/load-session --full` for details
+💡 `/wy-load-session --full` for details
 ```
 
 ---
@@ -209,7 +209,7 @@ If session has `preload_contexts` (old schema), read those files from `~/.claude
 
 ## Branch-Aware Behavior
 
-By default, `/load-session` filters to the **current git branch**:
+By default, `/wy-load-session` filters to the **current git branch**:
 - In `main` → loads latest session from `main`
 - In `PLA-123-feature` worktree → loads latest session from that branch
 - Use `--all` to see sessions from all branches

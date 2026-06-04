@@ -1,5 +1,5 @@
 ---
-name: wrap-session
+name: wy-wrap-session
 description: Create a session retrospective with key context and recommendations for continuity
 argument-hint: "[--preview]"
 model: haiku
@@ -14,8 +14,8 @@ Create a session summary capturing only non-derivable context, then save via bas
 
 ## Usage
 
-- `/wrap-session` - Save session to disk
-- `/wrap-session --preview` - Show what would be saved without writing to disk
+- `/wy-wrap-session` - Save session to disk
+- `/wy-wrap-session --preview` - Show what would be saved without writing to disk
 
 ## Instructions
 
@@ -122,7 +122,7 @@ The JSON must include both the environment fields (required by the save script) 
 
 {populated session JSON, formatted}
 
-Run `/wrap-session` (without `--preview`) to save.
+Run `/wy-wrap-session` (without `--preview`) to save.
 ```
 
 **If saving:** Pipe the session JSON to the save script:

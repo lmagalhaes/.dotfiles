@@ -1,5 +1,5 @@
 ---
-name: session-status
+name: wy-session-status
 description: Analyze current session health, token usage, and provide recommendations
 argument-hint: (no arguments)
 model: haiku
@@ -66,7 +66,7 @@ Use this scale based on current token usage:
 - 🟢 **Healthy** (40-80k tokens): Continue freely, plenty of room
 - 🟡 **Moderate** (80-120k tokens): Be mindful, still good capacity
 - 🟠 **High** (120-140k tokens): Start wrapping up or prepare to save
-- 🔴 **Critical** (140-150k tokens): **AUTO-WRAP SUGGESTION** - Strongly recommend `/wrap-session`
+- 🔴 **Critical** (140-150k tokens): **AUTO-WRAP SUGGESTION** - Strongly recommend `/wy-wrap-session`
 - 🚨 **EMERGENCY** (>150k tokens): **FORCE WRAP** - Context overflow imminent, must wrap immediately
 
 **Note:** Context overflow typically occurs around 150k tokens, not at the 200k limit.
@@ -87,14 +87,14 @@ Based on health level:
 
 **If 🟠 High:**
 - Finish current task and wrap up
-- **Optional:** Run `/wrap-session` at next natural break point
+- **Optional:** Run `/wy-wrap-session` at next natural break point
 
 **If 🔴 Critical (AUTO-WRAP TRIGGER):**
-- **STRONG RECOMMENDATION:** Run `/wrap-session` now
+- **STRONG RECOMMENDATION:** Run `/wy-wrap-session` now
 - Show wrap preview:
   ```
   ## 💾 Wrap Preview
-  If you run /wrap-session now:
+  If you run /wy-wrap-session now:
   - Will capture: [X] completed tasks, [Y] remaining
   - Files analyzed: [N] modified, [M] read
   - Patterns learned: [list top 3]
@@ -103,7 +103,7 @@ Based on health level:
   ```
 
 **If 🚨 EMERGENCY (FORCE WRAP):**
-- **CRITICAL:** Must run `/wrap-session` immediately
+- **CRITICAL:** Must run `/wy-wrap-session` immediately
 - At >180k tokens, risk hitting 200k limit mid-response
 - Cannot safely continue work
 - Show urgent wrap preview with same format as above
@@ -175,14 +175,14 @@ Git: [N] modified, [M] untracked
 **If Critical (>150k) or Emergency (>180k), add wrap preview:**
 ```markdown
 ## 💾 Wrap Preview
-If you /wrap-session now:
+If you /wy-wrap-session now:
 - Capture: [X] completed, [Y] remaining tasks
 - Files: [N] modified, [M] read
 - Patterns: [List top 3 learned patterns]
 - Cost: ~800-1k tokens
 - Leaves: ~[remaining]k for next session
 
-[If Emergency: **CRITICAL: Run /wrap-session immediately**]
+[If Emergency: **CRITICAL: Run /wy-wrap-session immediately**]
 ```
 
 Be helpful, specific, and honest about session state.
@@ -190,7 +190,7 @@ Be helpful, specific, and honest about session state.
 ## Session Continuity:
 
 When recommending session wrap (High or Critical status):
-- Mention `/wrap-session` command as the primary recommendation
+- Mention `/wy-wrap-session` command as the primary recommendation
 - Explain it will automatically capture: tasks completed, context learned, next steps, and optimization tips
-- Note that the next session can restore context with `/load-session`
+- Note that the next session can restore context with `/wy-load-session`
 - Provide manual alternatives only if user indicates preference
