@@ -24,7 +24,7 @@ fi
 # Get latest and total
 LATEST="none"
 [ -f "$SESSIONS_DIR/index.json" ] && LATEST=$(jq -r '.latest // "none"' "$SESSIONS_DIR/index.json" 2>/dev/null)
-TOTAL=$(ls -1 "$SESSIONS_DIR"/session-*.json 2>/dev/null | wc -l | tr -d ' ')
+TOTAL=$(ls -1 "$SESSIONS_DIR"/*/session-*.json 2>/dev/null | wc -l | tr -d ' ')
 
 if [ "$TOTAL" -eq 0 ]; then
   echo '{"error": "no_sessions"}'
@@ -39,7 +39,7 @@ echo "  \"limit\": $LIMIT,"
 echo "  \"sessions\": ["
 
 first=true
-for f in $(ls -1r "$SESSIONS_DIR"/session-*.json 2>/dev/null | head -n "$LIMIT"); do
+for f in $(ls -1r "$SESSIONS_DIR"/*/session-*.json 2>/dev/null | head -n "$LIMIT"); do
   [ -f "$f" ] || continue
 
   $first || echo ","
