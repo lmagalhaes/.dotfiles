@@ -25,7 +25,11 @@
       "Bash(rtk grep *)",
       "Bash(rtk tree *)",
       "Bash(rtk read *)",
-      "Skill(wy-list-sessions)"
+      "Skill(wy-list-sessions)",
+      "Skill(deep-research)",
+      "WebFetch(domain:hboon.com)",
+      "WebFetch(domain:github.com)",
+      "WebFetch(domain:yyahn.com)"
     ]
   }
 }
