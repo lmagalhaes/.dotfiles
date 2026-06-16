@@ -33,7 +33,11 @@
       "Read(**/.claude/sessions/*)",
       "Write(/Users/lmagalhaes/.claude/sessions/**)",
       "Write(/Users/lmagalhaes/.dotfiles/.claude/sessions/**)",
-      "Write(**/.claude/sessions/**)"
+      "Write(**/.claude/sessions/**)",
+      "Skill(fetch-meetings)",
+      "mcp__claude_ai_Google_Calendar__list_events",
+      "mcp__claude_ai_Google_Calendar__list_calendars",
+      "Write(/Users/lmagalhaes/.claude/meetings-today.json)"
     ],
     "deny": [
       "Read(./secrets/**)",
@@ -75,6 +79,16 @@
         ]
       }
     ],
+    "UserPromptSubmit": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash /Users/lmagalhaes/.claude/hooks/check-meetings.sh"
+          }
+        ]
+      }
+    ],
     "PreToolUse": [
       {
         "matcher": "Bash",
@@ -89,7 +103,8 @@
   },
   "statusLine": {
     "type": "command",
-    "command": "bash ~/.claude/statusline-command.sh"
+    "command": "bash ~/.claude/statusline-command.sh",
+    "refreshInterval": 30
   },
   "enabledPlugins": {
     "coderabbit@claude-plugins-official": true,
