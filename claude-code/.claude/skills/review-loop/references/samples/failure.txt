@@ -1,0 +1,54 @@
+# exit_code: 0
+# NOTE: codex review ALWAYS exits 0 — even for a nonexistent branch
+# When the branch doesn't exist, codex falls back to reviewing against origin/main
+# There is no true "failure" mode — the command always completes
+# invocation: codex review --base nonexistent-branch-xyz-000
+
+OpenAI Codex v0.140.0
+--------
+workdir: /Users/lmagalhaes/.dotfiles/.worktrees/review-branch-loop-skill
+model: gpt-5.4
+provider: openai
+approval: never
+sandbox: workspace-write [workdir, /tmp, $TMPDIR]
+reasoning effort: medium
+reasoning summaries: none
+session id: 019ed326-60b1-7be0-a180-53f07713e51a
+--------
+user
+changes against 'nonexistent-branch-xyz-000'
+[ERROR shell_snapshot lines — noise]
+
+exec
+/opt/homebrew/bin/bash -lc "git status ... && git branch --all ..."
+ exited 128 in 491ms:
+fatal: no such branch: 'nonexistent-branch-xyz-000'
+
+exec
+[codex falls back: runs git diff --stat origin/main...HEAD and reviews against that instead]
+
+codex
+The requested base branch could not be resolved, so I reviewed the branch delta against
+`origin/main`, which is the current merge base. That patch adds a functional error in
+`process_data` plus a committed secret and a file-handle leak, so it should not be
+considered correct.
+
+Full review comments:
+
+- [P1] Remove the committed API key from source — sample_issues.py:21-21
+  ...explanation...
+
+- [P2] Avoid looking up `value` for inactive items — sample_issues.py:8-10
+  ...explanation...
+
+- [P3] Close the config file after loading JSON — sample_issues.py:17-18
+  ...explanation...
+[NOTE: entire codex block is duplicated — same text appears twice]
+
+# Key observations from this "failure" sample:
+# - exit_code is 0 — cannot use exit code to detect anything
+# - Nonexistent branch → codex silently falls back to origin/main for the diff
+# - The fallback is mentioned in the codex summary: "could not be resolved, so I reviewed...against origin/main"
+# - Output format is identical to a normal run with findings
+# - The codex block is ALWAYS duplicated regardless of outcome
+# - Priority labels: P1, P2, P3 (can go higher)

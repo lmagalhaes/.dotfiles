@@ -1,0 +1,42 @@
+# exit_code: 0
+# NOTE: exit code is 0 even when findings are present — cannot use exit code to detect findings
+# invocation: codex review --base review-branch-loop-skill (branch with sample_issues.py added)
+
+OpenAI Codex v0.140.0
+--------
+workdir: /Users/lmagalhaes/.dotfiles/.worktrees/review-branch-loop-skill
+model: gpt-5.4
+provider: openai
+approval: never
+sandbox: workspace-write [workdir, /tmp, $TMPDIR]
+reasoning effort: medium
+reasoning summaries: none
+session id: 019ed325-2e8b-7730-8990-e33008bf582a
+--------
+user
+changes against 'review-branch-loop-skill'
+[... ERROR lines about shell_snapshot validation — these are noise, always present ...]
+
+exec
+/opt/homebrew/bin/bash -lc "git diff <sha> ..."
+[... exec blocks showing git diff and file reads ...]
+
+codex
+The patch introduces at least one functional bug in `process_data()` for inactive records without a `value`, and it also commits a credential-shaped API key directly into source. These issues are likely to break expected usage or repository hygiene.
+
+Full review comments:
+
+- [P1] Avoid reading `value` for inactive items — /Users/lmagalhaes/.dotfiles/.worktrees/review-branch-loop-skill/sample_issues.py:8-9
+  When `data` contains an inactive item without a `value` field, `process_data()` still raises `KeyError` at `item['value']` before it reaches the branch that appends `None`. That makes the new inactive-path unusable for the exact case where callers omit values for inactive records, so the lookup needs to happen only for active items (or be made tolerant of missing keys).
+
+- [P2] Remove the committed `sk-...` token from source — /Users/lmagalhaes/.dotfiles/.worktrees/review-branch-loop-skill/sample_issues.py:21-21
+  Keeping an `sk-...` token in the repository exposes the credential to anyone who can read this branch, and many CI/repo secret scanners treat that prefix as a real OpenAI key and will fail builds or auto-revoke it. Even if this is only a placeholder, it should not live in checked-in source code.
+[NOTE: the review text above repeats a second time — this duplication is a quirk of the CLI output, not two separate findings]
+
+# Key format observations:
+# - Findings under "Full review comments:" section, each prefixed with "- [P1]", "- [P2]", etc.
+# - Finding format: "- [Priority] Short description — filepath:line_range"
+# - Description follows on next lines, indented
+# - The entire codex block (summary + full review) is printed twice — deduplicate when parsing
+# - Priority labels seen: P1 (bug/critical), P2 (hygiene/important)
+# - No consistent machine-readable separator between findings

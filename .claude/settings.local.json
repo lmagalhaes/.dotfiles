@@ -29,7 +29,9 @@
       "Skill(deep-research)",
       "WebFetch(domain:hboon.com)",
       "WebFetch(domain:github.com)",
-      "WebFetch(domain:yyahn.com)"
+      "WebFetch(domain:yyahn.com)",
+      "Bash(codex review *)",
+      "Bash(rtk git *)"
     ]
   }
 }
