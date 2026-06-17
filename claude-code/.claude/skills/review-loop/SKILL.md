@@ -95,7 +95,7 @@ skill is invoked from a subdirectory.
 
 ### Step B — Parse findings via LLM agent
 
-Spawn an Agent with this prompt (substitute actual stdout):
+Spawn a **haiku** Agent with this prompt (substitute actual stdout):
 
 ```
 You are parsing the output of `codex review`. Extract all findings from the text below.
