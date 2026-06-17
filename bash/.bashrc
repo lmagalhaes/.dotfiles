@@ -122,3 +122,7 @@ done
 export SSH_OPTS="-o StrictHostKeyChecking=accept-new"
 export PATH="$HOME/.local/bin:$PATH"
 eval "$(zoxide init bash)"
+
+#### CLAUDE CODE
+# Render inline instead of alternate screen so tmux scrollback captures output
+export CLAUDE_CODE_DISABLE_ALTERNATE_SCREEN=1
