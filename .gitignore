@@ -2,6 +2,9 @@
 *.sw[po]
 secrets.env
 
+# Tmux plugins folder
+tmux/.tmux/plugins/
+
 # Session-specific files (per-user)
 .claude/task-context.md
 claude-code/.claude/meetings-today.json
