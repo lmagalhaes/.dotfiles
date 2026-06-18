@@ -31,7 +31,8 @@
       "WebFetch(domain:github.com)",
       "WebFetch(domain:yyahn.com)",
       "Bash(codex review *)",
-      "Bash(rtk git *)"
+      "Bash(rtk git *)",
+      "Bash(rtk find *)"
     ]
   }
 }
