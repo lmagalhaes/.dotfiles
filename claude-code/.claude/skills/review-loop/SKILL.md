@@ -78,11 +78,12 @@ Run this loop up to `--max-iterations` times. Track the current iteration number
 ### Step A — Run codex review
 
 ```bash
-# All rounds — --uncommitted ensures staged/unstaged edits to tracked files
-# are always included, whether they existed before the loop or were applied
-# by a previous round's fixes.
-codex review --base <base-branch> --uncommitted
+codex review --base <base-branch>
 ```
+
+Note: `--base` and `--uncommitted` are mutually exclusive in codex 0.140+. Using
+`--base` is correct here — fixes from prior rounds are committed at the end of Step E,
+so the next round's `--base` diff always includes them.
 
 Capture full stdout and the exit code. Then save the raw output immediately:
 
@@ -272,13 +273,21 @@ Skip `pre_existing` findings for fixing.
 For each `introduced` finding (in priority order, P1 first):
 
 1. Read the relevant file around the affected lines.
-2. Apply a fix using Edit/Write. No need to stage new files — `--uncommitted` makes
-   all worktree changes (including untracked new files) visible to the next round.
+2. Apply a fix using Edit/Write.
 3. Briefly explain what you changed and why (one sentence).
-4. Do NOT commit — fixes accumulate; the user commits.
-5. After editing a file, **skip all remaining findings in that same file** for this round.
+4. After editing a file, **skip all remaining findings in that same file** for this round.
    Line numbers from the original review are now stale. The next round's codex pass will
    re-report any unresolved issues in that file with updated line numbers.
+
+After all fixes for this round are applied, commit them so the next round's `--base` diff
+includes them:
+
+```bash
+git add -u
+git commit -m "review-loop: apply round $ROUND fixes"
+```
+
+These are WIP commits — squash them before merging.
 
 If a finding is ambiguous (you are unsure how to fix it safely), skip it and note it in the
 round report.
@@ -330,7 +339,7 @@ If any findings were skipped (ambiguous fix), collect all of them into a single 
 note and pass it to the next `codex review` invocation via stdin:
 
 ```bash
-codex review --base <base-branch> --uncommitted - <<'EOF'
+codex review --base <base-branch> - <<'EOF'
 The following findings were flagged in the last round but not fixed. Please re-evaluate or confirm each:
 - <title1> at <filepath1>:<line_start1>. Reason not fixed: <reason1>.
 - <title2> at <filepath2>:<line_start2>. Reason not fixed: <reason2>.
