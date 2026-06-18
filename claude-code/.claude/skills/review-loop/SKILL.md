@@ -56,6 +56,21 @@ Before starting the loop:
 
 ---
 
+## Run directory
+
+Before starting the loop, create a timestamped directory to store all artifacts for this run:
+
+```bash
+BRANCH=$(git branch --show-current)
+TIMESTAMP=$(date +%Y%m%dT%H%M%S)
+RUN_DIR="$HOME/.claude/review-loop/$BRANCH/$TIMESTAMP"
+mkdir -p "$RUN_DIR"
+```
+
+`RUN_DIR` is used throughout the loop to save per-round and final artifacts.
+
+---
+
 ## Loop
 
 Run this loop up to `--max-iterations` times. Track the current iteration number (1-based).
@@ -69,7 +84,12 @@ Run this loop up to `--max-iterations` times. Track the current iteration number
 codex review --base <base-branch> --uncommitted
 ```
 
-Capture full stdout and the exit code.
+Capture full stdout and the exit code. Then save the raw output immediately:
+
+```bash
+mkdir -p "$RUN_DIR/rounds/$ROUND"
+echo "$CODEX_STDOUT" > "$RUN_DIR/rounds/$ROUND/raw.txt"
+```
 
 **Non-zero exit code** indicates a startup or initialization failure (auth, app-server,
 environment) that occurred before any review was emitted. If the exit code is non-zero,
@@ -105,15 +125,16 @@ PARSED=$(echo "$CODEX_STDOUT" | python3 "$PARSER" 2>/tmp/review-loop-parse-error
 PARSE_EXIT=$?
 ```
 
-- Exit 0: use `$PARSED` as the structured result. Proceed to Step C.
-- Any non-zero exit: the parser could not run or could not interpret the output — fall back
-  to the LLM agent below. Before falling back, save the raw output for diagnosis:
+- Exit 0: use `$PARSED` as the structured result. Save it and proceed to Step C:
   ```bash
-  mkdir -p "$HOME/.claude/review-loop/parser-failures"
-  TIMESTAMP=$(date +%Y%m%dT%H%M%S)
-  echo "$CODEX_STDOUT" > "$HOME/.claude/review-loop/parser-failures/${TIMESTAMP}.txt"
+  echo "$PARSED" > "$RUN_DIR/rounds/$ROUND/parsed.json"
   ```
-  Warn the user: `⚠ Deterministic parser could not parse codex output — falling back to LLM. Raw output saved to ~/.claude/review-loop/parser-failures/${TIMESTAMP}.txt`
+- Any non-zero exit: the parser could not run or could not interpret the output — fall back
+  to the LLM agent below. Before falling back, record the failure in the run directory:
+  ```bash
+  echo "$CODEX_STDOUT" > "$RUN_DIR/rounds/$ROUND/parse-failure.txt"
+  ```
+  Warn the user: `⚠ Deterministic parser could not parse codex output — falling back to LLM. Raw output saved to $RUN_DIR/rounds/$ROUND/parse-failure.txt`
 
 **Fallback: LLM agent**
 
@@ -166,7 +187,12 @@ Return JSON:
 </codex_output>
 ```
 
-Use a structured output schema matching the JSON shape above.
+Use a structured output schema matching the JSON shape above. After the agent returns,
+save its result:
+
+```bash
+echo '<llm-result-json>' > "$RUN_DIR/rounds/$ROUND/parsed.json"
+```
 
 ### Step C — Handle status
 
@@ -274,6 +300,12 @@ After fixing, print a round report (JSON-shaped, for AI consumption):
 }
 ```
 
+Save this report to the run directory:
+
+```bash
+echo '<round-report-json>' > "$RUN_DIR/rounds/$ROUND/round.json"
+```
+
 If `remaining_introduced == 0` and iterations remain and no verification pass has been run
 yet this loop, do **not** stop yet — mark that the verification pass has been used and run
 one more iteration. This pass counts against `--max-iterations`. On it:
@@ -338,6 +370,27 @@ Next steps:
 
 If the loop hit the iteration limit without reaching clean, say so explicitly:
 > `Stopped after <N> iterations (limit reached). <M> introduced finding(s) remain.`
+
+After printing the summary, save `final.json` to the run directory:
+
+```bash
+cat > "$RUN_DIR/final.json" <<EOF
+{
+  "branch": "<branch>",
+  "timestamp": "<run-timestamp>",
+  "base": "<base-branch>",
+  "rounds": <N>,
+  "outcome": "<clean | findings_remain | error | fallback>",
+  "total_fixed": <count>,
+  "total_pre_existing": <count>,
+  "remaining_introduced": <count>,
+  "run_dir": "$RUN_DIR"
+}
+EOF
+```
+
+Then print the run directory path so the user knows where to find the artifacts:
+> `Artifacts saved to $RUN_DIR`
 
 ---
 
