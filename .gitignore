@@ -5,3 +5,4 @@ secrets.env
 # Session-specific files (per-user)
 .claude/task-context.md
 claude-code/.claude/meetings-today.json
+claude-code/.claude/settings.json
