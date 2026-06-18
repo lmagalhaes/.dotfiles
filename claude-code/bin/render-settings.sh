@@ -1,6 +1,8 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+command -v jq >/dev/null || { echo "render-settings: jq is required but not found" >&2; exit 1; }
+
 MANAGED="${HOME}/.claude/config/settings.managed.json"
 TARGET="${HOME}/.claude/settings.json"
 

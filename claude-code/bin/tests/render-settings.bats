@@ -23,6 +23,17 @@ write_target() {
   echo "$1" > "$(target)"
 }
 
+@test "exits with error when jq is not available" {
+  write_managed '{"theme":"dark"}'
+  local empty_bin
+  empty_bin="$(mktemp -d)"
+  # Use /bin/bash by absolute path so PATH restriction doesn't prevent bash from running
+  run env PATH="$empty_bin" /bin/bash "$SCRIPT"
+  rm -rf "$empty_bin"
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"jq is required"* ]]
+}
+
 @test "exits with error when managed file is missing" {
   run bash "$SCRIPT"
   [ "$status" -eq 1 ]
