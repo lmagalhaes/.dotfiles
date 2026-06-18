@@ -51,8 +51,9 @@ Before starting the loop:
 3. Verify `codex` is on PATH: `which codex` — if not found, stop with:
    > `codex not found on PATH. Install it and retry.`
 
-4. No untracked-file warning needed — `--uncommitted` includes staged, unstaged, and
-   untracked changes, so all worktree content is visible to codex review.
+4. Check for uncommitted changes: `git status --short`. If any exist, warn:
+   > `⚠ You have uncommitted changes. codex review --base only sees committed history — uncommitted edits will not be reviewed. Commit or stash them first.`
+   Then stop. The loop must start from a clean working tree so `--base` captures the full branch state.
 
 ---
 
@@ -64,7 +65,11 @@ Before starting the loop, create a timestamped directory to store all artifacts 
 BRANCH=$(git branch --show-current)
 TIMESTAMP=$(date +%Y%m%dT%H%M%S)
 RUN_DIR="$HOME/.claude/review-loop/$BRANCH/$TIMESTAMP"
-mkdir -p "$RUN_DIR"
+if ! mkdir -p "$RUN_DIR" 2>/dev/null; then
+  RUN_DIR="$(mktemp -d)/review-loop-$BRANCH-$TIMESTAMP"
+  mkdir -p "$RUN_DIR"
+  echo "⚠ Could not write to ~/.claude — artifacts will be saved to $RUN_DIR instead"
+fi
 ```
 
 `RUN_DIR` is used throughout the loop to save per-round and final artifacts.
@@ -279,13 +284,25 @@ For each `introduced` finding (in priority order, P1 first):
    Line numbers from the original review are now stale. The next round's codex pass will
    re-report any unresolved issues in that file with updated line numbers.
 
-After all fixes for this round are applied, commit them so the next round's `--base` diff
-includes them:
+After all fixes for this round are applied, stage only the files that were edited in
+Step E and commit — but only if there is something to commit:
+
+Only run this block when Step E actually edited at least one file:
 
 ```bash
-git add -u
-git commit -m "review-loop: apply round $ROUND fixes"
+# FIXED_FILES is the list of filepaths edited in Step E this round
+if [ ${#FIXED_FILES[@]} -gt 0 ]; then
+  git add -- "${FIXED_FILES[@]}"
+  if ! git diff --cached --quiet; then
+    git commit -m "review-loop: apply round $ROUND fixes"
+  fi
+fi
 ```
+
+Staging by explicit path (not `git add -A` or `git add -u`) avoids accidentally including
+untracked files unrelated to the implementation. The outer guard skips the entire block —
+and avoids a `git add` fatal error on an empty path list — when all findings were
+pre_existing or skipped.
 
 These are WIP commits — squash them before merging.
 
