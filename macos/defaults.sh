@@ -1,7 +1,7 @@
 LANGUAGES=(en-AU pt-BR)
 LOCALE="en_AU@currency=aud"
 MEASUREMENT_UNITS="Centimeters"
-SCREENSHOTS_FOLDER="${HOME}/Screenshots"
+SCREENSHOTS_FOLDER="${HOME}/Desktop/Screenshots"
 
 osascript -e 'tell application "System Preferences" to quit'
 
@@ -10,6 +10,9 @@ sudo -v
 
 # Keep-alive: update existing `sudo` time stamp until this script has finished
 while true; do sudo -n true; sleep 60; kill -0 "$$" || exit; done 2>/dev/null &
+
+# Set timezone
+sudo systemsetup -settimezone Australia/Sydney 2>/dev/null
 
 ###############################################################################
 # Localization                                                                #
@@ -64,6 +67,10 @@ defaults write NSGlobalDomain PMPrintingExpandedStateForPrint2 -bool true
 # Save to disk (not to iCloud) by default
 defaults write NSGlobalDomain NSDocumentSaveNewDocumentsToCloud -bool false
 
+# Set screenshots save location
+mkdir -p "$SCREENSHOTS_FOLDER"
+defaults write com.apple.screencapture location -string "$SCREENSHOTS_FOLDER"
+
 # Automatically quit printer app once the print jobs complete
 defaults write com.apple.print.PrintingPrefs "Quit When Finished" -bool true
 
@@ -80,11 +87,25 @@ defaults write com.apple.CrashReporter DialogType -string "none"
 launchctl unload -w /System/Library/LaunchAgents/com.apple.notificationcenterui.plist 2> /dev/null
 
 ###############################################################################
+# Trackpad                                                                    #
+###############################################################################
+
+defaults write com.apple.AppleMultitouchTrackpad "Clicking" -bool false
+defaults write com.apple.driver.AppleBluetoothMultitouch.trackpad Clicking -bool true
+defaults -currentHost write NSGlobalDomain com.apple.mouse.tapBehavior -int 1
+
+###############################################################################
 # Finder                                                                      #
 ###############################################################################
 
 # Finder: allow quitting via ⌘ + Q; doing so will also hide desktop icons
 # defaults write com.apple.finder QuitMenuItem -bool true
+
+# Show icons for hard drives, servers, and removable media on the desktop
+defaults write com.apple.finder ShowExternalHardDrivesOnDesktop -bool true
+defaults write com.apple.finder ShowHardDrivesOnDesktop -bool true
+defaults write com.apple.finder ShowMountedServersOnDesktop -bool true
+defaults write com.apple.finder ShowRemovableMediaOnDesktop -bool true
 
 # Finder: disable window animations and Get Info animations
 defaults write com.apple.finder DisableAllAnimations -bool true
@@ -124,6 +145,11 @@ defaults write com.apple.desktopservices DSDontWriteUSBStores -bool true
 defaults write com.apple.frameworks.diskimages skip-verify -bool true
 defaults write com.apple.frameworks.diskimages skip-verify-locked -bool true
 defaults write com.apple.frameworks.diskimages skip-verify-remote -bool true
+
+# Automatically open a new Finder window when a volume is mounted
+defaults write com.apple.frameworks.diskimages auto-open-ro-root -bool true
+defaults write com.apple.frameworks.diskimages auto-open-rw-root -bool true
+defaults write com.apple.finder OpenWindowForNewRemovableDisk -bool true
 
 # Use AirDrop over every interface.
 #defaults write com.apple.NetworkBrowser BrowseAllInterfaces -bool true
@@ -191,9 +217,16 @@ defaults write com.apple.iCal "Show Week Numbers" -bool true
 defaults write com.apple.iCal "first day of week" -int 1
 
 ###############################################################################
+# Activity Monitor                                                            #
+###############################################################################
+
+# Visualize CPU usage in the Activity Monitor Dock icon
+defaults write com.apple.ActivityMonitor IconType -int 5
+
+###############################################################################
 # Kill affected applications                                                  #
 ###############################################################################
 
-for app in "Calendar" "Mail" "Finder" "SystemUIServer"; do
+for app in "Activity Monitor" "Calendar" "Dock" "Mail" "Finder" "SystemUIServer"; do
   killall "${app}" &> /dev/null
 done
