@@ -93,7 +93,29 @@ Always use the absolute path (REPO_ROOT + "/" + repo-relative-path) when calling
 `git blame` — passing a repo-relative path resolves against CWD, which breaks when the
 skill is invoked from a subdirectory.
 
-### Step B — Parse findings via LLM agent
+### Step B — Parse findings
+
+Run the deterministic parser first. It is the primary path; the LLM agent is the fallback.
+
+**Primary: deterministic parser**
+
+```bash
+PARSER="$HOME/.claude/skills/review-loop/references/parse_findings.py"
+PARSED=$(echo "$CODEX_STDOUT" | python3 "$PARSER" 2>/tmp/review-loop-parse-error.json)
+PARSE_EXIT=$?
+```
+
+- Exit 0: use `$PARSED` as the structured result. Proceed to Step C.
+- Any non-zero exit: the parser could not run or could not interpret the output — fall back
+  to the LLM agent below. Before falling back, save the raw output for diagnosis:
+  ```bash
+  mkdir -p "$HOME/.claude/review-loop/parser-failures"
+  TIMESTAMP=$(date +%Y%m%dT%H%M%S)
+  echo "$CODEX_STDOUT" > "$HOME/.claude/review-loop/parser-failures/${TIMESTAMP}.txt"
+  ```
+  Warn the user: `⚠ Deterministic parser could not parse codex output — falling back to LLM. Raw output saved to ~/.claude/review-loop/parser-failures/${TIMESTAMP}.txt`
+
+**Fallback: LLM agent**
 
 Spawn a **haiku** Agent with this prompt (substitute actual stdout):
 
