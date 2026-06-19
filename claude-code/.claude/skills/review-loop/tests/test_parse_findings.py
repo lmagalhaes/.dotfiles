@@ -336,3 +336,50 @@ class TestFindingParsing:
         _, out, _ = run_parser(text)
         assert out['status'] == 'findings'
         assert len(out['findings']) == 1
+
+
+class TestSingularReviewCommentForm:
+    """gpt-5.4 sometimes emits 'Review comment:' (singular) instead of
+    'Full review comments:' — the parser must treat both as the section header."""
+
+    def _text_with_singular_header(self) -> str:
+        return (
+            'codex\n'
+            'Summary.\n\n'
+            'Review comment:\n\n'
+            '- [P1] A bug — src/foo.py:3-5\n'
+            '  explanation\n'
+        )
+
+    def test_singular_header_yields_findings_status(self):
+        _, out, _ = run_parser(self._text_with_singular_header())
+        assert out['status'] == 'findings'
+
+    def test_singular_header_parses_finding(self):
+        _, out, _ = run_parser(self._text_with_singular_header())
+        assert len(out['findings']) == 1
+
+    def test_singular_header_finding_priority(self):
+        _, out, _ = run_parser(self._text_with_singular_header())
+        assert out['findings'][0]['priority'] == 'P1'
+
+    def test_singular_header_finding_filepath(self):
+        _, out, _ = run_parser(self._text_with_singular_header())
+        assert out['findings'][0]['filepath'] == 'src/foo.py'
+
+    def test_singular_header_duplicate_backstop(self):
+        text = (
+            'codex\n'
+            'Summary.\n\n'
+            'Review comment:\n\n'
+            '- [P1] First — file.py:1-1\n'
+            '  desc\n'
+            '\n'
+            'Summary.\n'
+            '\n'
+            'Review comment:\n\n'
+            '- [P1] First — file.py:1-1\n'
+            '  desc\n'
+        )
+        _, out, _ = run_parser(text)
+        assert len(out['findings']) == 1

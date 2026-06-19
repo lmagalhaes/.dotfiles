@@ -19,7 +19,7 @@ _FALLBACK_SIGNAL_RE = re.compile(r'could not be resolved', re.IGNORECASE)
 # Codex always quotes the fallback ref this way in its "could not be resolved" message.
 _FALLBACK_BRANCH_RE = re.compile(r'`\S+/\S+`')
 
-_FULL_REVIEW_COMMENTS = 'Full review comments:'
+_FULL_REVIEW_COMMENTS = re.compile(r'^(?:Full review comments|Review comment):$')
 
 
 def _parse_error(reason: str) -> None:
@@ -47,7 +47,7 @@ def parse(text: str) -> dict:
     # the first "Full review comments:" line).
     summary_parts = []
     for line in codex_lines:
-        if line == _FULL_REVIEW_COMMENTS:
+        if _FULL_REVIEW_COMMENTS.match(line):
             break
         summary_parts.append(line)
     summary = '\n'.join(summary_parts)
@@ -59,7 +59,7 @@ def parse(text: str) -> dict:
     # Locate the first "Full review comments:" section.
     frc_index = None
     for i, line in enumerate(codex_lines):
-        if line == _FULL_REVIEW_COMMENTS:
+        if _FULL_REVIEW_COMMENTS.match(line):
             frc_index = i
             break
 
@@ -72,8 +72,8 @@ def parse(text: str) -> dict:
     desc_lines = []
 
     for line in codex_lines[frc_index + 1:]:
-        # Second "Full review comments:" is the duplicate backstop — stop here.
-        if line == _FULL_REVIEW_COMMENTS:
+        # Second section header is the duplicate backstop — stop here.
+        if _FULL_REVIEW_COMMENTS.match(line):
             break
 
         m = _FINDING_RE.match(line)
@@ -105,7 +105,7 @@ def parse(text: str) -> dict:
 
     if not findings:
         _parse_error(
-            "Found 'Full review comments:' section but no parseable finding bullets. "
+            "Found review comments section but no parseable finding bullets. "
             "Output format may have changed."
         )
 
