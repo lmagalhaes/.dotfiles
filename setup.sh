@@ -18,17 +18,73 @@ if ! command -v stow &> /dev/null; then
   exit 1
 fi
 
-if ! command -v jq &> /dev/null; then
-  echo "Error: jq is not installed (required for settings rendering)"
-  echo "Install with: brew install jq"
-  exit 1
-fi
-
 # Change to dotfiles directory (stow requires this)
 cd "$DOTFILES"
 
-# Pre-create real directories so stow --no-folding does not recreate them as symlinks
-mkdir -p "$HOME/.claude/hooks"
+# If ~/.claude is the old repo-managed symlink, migrate it to the new stow layout.
+# Only handles symlinks pointing into this dotfiles repo — intentional custom
+# symlinks (e.g. a synced config directory) are left untouched.
+LINK_TARGET=""
+if [ -L "$HOME/.claude" ]; then
+  # cd -P resolves the target portably (readlink -f is GNU-only, absent on macOS).
+  # Canonicalize both paths so symlinked components (e.g. macOS /var → /private/var)
+  # don't prevent matching the exact old install path.
+  _lt="$(cd -P "$HOME/.claude" 2>/dev/null && pwd || true)"
+  _legacy="$(cd -P "$DOTFILES/claude-code/.claude" 2>/dev/null && pwd || true)"
+  if [ -n "$_lt" ] && [ -n "$_legacy" ] && [ "$_lt" = "$_legacy" ]; then
+    LINK_TARGET="$_lt"
+  fi
+fi
+
+if [ -n "$LINK_TARGET" ]; then
+  echo "  Migrating old ~/.claude install from $LINK_TARGET..."
+  # Stage all untracked content before stow. Four passes: directory-level moves
+  # (efficient for whole trees) then file-level moves inside tracked dirs, each
+  # run twice — once for non-ignored and once for gitignored content.
+  # The gitignored passes are necessary because sessions/, plugins/, projects/, and
+  # settings.local.json are in .gitignore and silently omitted without --ignored.
+  RUNTIME_STAGING="$(mktemp -d)"
+  # Passes 1 & 3: whole untracked directories (non-ignored, then gitignored).
+  for _ls_opts in "" "--ignored --exclude-standard"; do
+    # shellcheck disable=SC2086
+    git ls-files --others --directory --no-empty-directory $_ls_opts "claude-code/.claude/" \
+    | while IFS= read -r gitpath; do
+      pkg_rel="${gitpath#"claude-code/.claude/"}"
+      pkg_rel="${pkg_rel%/}"
+      src="$LINK_TARGET/$pkg_rel"
+      [ -e "$src" ] || continue
+      mkdir -p "$RUNTIME_STAGING/$(dirname "$pkg_rel")"
+      mv "$src" "$RUNTIME_STAGING/$pkg_rel" 2>/dev/null || true
+    done
+  done
+  # Passes 2 & 4: untracked files inside tracked directories (non-ignored, then gitignored).
+  for _ls_opts in "" "--ignored --exclude-standard"; do
+    # shellcheck disable=SC2086
+    git ls-files --others $_ls_opts "claude-code/.claude/" \
+    | while IFS= read -r gitpath; do
+      pkg_rel="${gitpath#"claude-code/.claude/"}"
+      [ -z "$pkg_rel" ] && continue
+      src="$LINK_TARGET/$pkg_rel"
+      [ -e "$src" ] || continue
+      dst="$RUNTIME_STAGING/$pkg_rel"
+      mkdir -p "$(dirname "$dst")"
+      mv "$src" "$dst" 2>/dev/null || true
+    done
+  done
+  rm "$HOME/.claude"
+  mkdir -p "$HOME/.claude"
+  # Restore staged files and symlinks into the new real directory at arbitrary depth.
+  find "$RUNTIME_STAGING" -mindepth 1 \( -type f -o -type l \) 2>/dev/null \
+  | while IFS= read -r staged_file; do
+    rel="${staged_file#"$RUNTIME_STAGING/"}"
+    dst="$HOME/.claude/$rel"
+    mkdir -p "$(dirname "$dst")"
+    mv "$staged_file" "$dst" 2>/dev/null || true
+  done
+  find "$RUNTIME_STAGING" -mindepth 1 -type d 2>/dev/null | sort -r \
+  | while IFS= read -r d; do rmdir "$d" 2>/dev/null || true; done
+  rmdir "$RUNTIME_STAGING" 2>/dev/null || true
+fi
 
 # Stow packages (target: $HOME)
 echo "Installing packages with stow..."
@@ -44,8 +100,21 @@ for package in "${PACKAGES[@]}"; do
 done
 
 # claude-code uses --no-folding so ~/.claude stays a real directory
+# A dangling symlink (old target deleted, e.g. after re-cloning) should be cleaned
+# up so stow can proceed — it is not a live custom symlink to preserve.
+if [ -L "$HOME/.claude" ] && [ ! -e "$HOME/.claude" ]; then
+  echo "  Removing dangling ~/.claude symlink (old target no longer exists)..."
+  rm "$HOME/.claude"
+fi
 CLAUDE_CODE_STOWED=false
-if [ -d "claude-code" ]; then
+if [ -L "$HOME/.claude" ] && [ -z "$LINK_TARGET" ]; then
+  # ~/.claude is a live custom symlink we did not migrate — stow would abort here.
+  echo "  Warning: ~/.claude is a custom symlink — skipping claude-code stow."
+  echo "  Remove or replace ~/.claude to install the managed config."
+elif [ -d "claude-code" ]; then
+  # Pre-create real directories so stow --no-folding does not recreate them as symlinks.
+  # Only done here (not unconditionally) to avoid mutating a custom ~/.claude symlink target.
+  mkdir -p "$HOME/.claude/hooks"
   echo "  Stowing claude-code (--no-folding)..."
   stow --no-folding -R claude-code
   CLAUDE_CODE_STOWED=true
@@ -60,6 +129,9 @@ if [ "$CLAUDE_CODE_STOWED" = false ]; then
   echo "  Skipping (claude-code package not found)"
 elif [ ! -x "$DOTFILES/claude-code/bin/render-settings.sh" ]; then
   echo "  Warning: render-settings.sh not found or not executable, skipping"
+elif ! command -v jq &> /dev/null; then
+  echo "  Warning: jq not installed — Claude settings not rendered"
+  echo "  Install with: brew install jq, then re-run setup.sh"
 else
   "$DOTFILES/claude-code/bin/render-settings.sh"
 fi

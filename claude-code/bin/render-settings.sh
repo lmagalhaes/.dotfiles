@@ -17,7 +17,10 @@ if [ ! -f "$TARGET" ]; then
   exit 0
 fi
 
-# Merge: managed keys win at top level, unknown runtime keys are preserved
+# Shallow merge: managed keys win at every top-level key they define,
+# unknown runtime keys (e.g. feedbackSurveyState) are preserved from the target.
+# Nested keys like permissions, hooks, and enabledPlugins are owned by managed and
+# replaced wholesale — user-approved permissions belong in settings.local.json, not here.
 jq -s '.[0] + .[1]' "$TARGET" "$MANAGED" > "${TARGET}.tmp"
 mv "${TARGET}.tmp" "$TARGET"
 echo "render-settings: updated $TARGET"
