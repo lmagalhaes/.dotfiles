@@ -21,7 +21,7 @@ Prioritized backlog. Implement in order unless a dependency or real-world usage 
 - Treat the parser as the primary contract for Step B so the loop does not depend on prompt parsing for normal runs.
 - Save parser failures explicitly so output-format drift is easy to diagnose.
 
-### 2. Per-run artifact storage
+### ~~2. Per-run artifact storage~~ ✓
 - Save each round's artifacts under `.claude/review-loop/<branch>/<run-timestamp>/`.
 - Store at minimum:
   - `raw.txt` — raw `codex review` stdout
@@ -63,6 +63,17 @@ Prioritized backlog. Implement in order unless a dependency or real-world usage 
 - Add `--reviewer <command>` and adapter scripts only after the parsing and reporting contract is stable.
 - Avoid broadening the failure surface before the single-reviewer path is hardened.
 
+### 9. Branch-intent context for review
+- Add an optional way to pass a short branch/problem statement into `codex review` on the initial pass and subsequent rounds.
+- Keep the context structured and behavior-level:
+  - problem being solved
+  - intended behavior after the change
+  - explicit non-goals
+  - invariants that must still hold
+- Avoid implementation advice or "ignore this finding" language so the reviewer is informed without being steered toward false negatives.
+- Preserve the existing skipped-finding rejection context as a separate block, and define how both context sources are combined for later rounds.
+- Measure whether this reduces false positives on intentional behavior changes, migrations, and refactors before making it the default path.
+
 ---
 
 ## Recommended Order
@@ -76,3 +87,4 @@ Prioritized backlog. Implement in order unless a dependency or real-world usage 
 6. Tighten skill structure
 7. Controlled operator features
 8. Reviewer abstraction
+9. Branch-intent context for review
