@@ -11,19 +11,28 @@ DOTFILES="$HOME/.dotfiles"
 echo "Setting up dotfiles..."
 echo ""
 
-# Check if stow is installed
+# Check required tools
 if ! command -v stow &> /dev/null; then
   echo "Error: GNU Stow is not installed"
   echo "Install with: brew install stow"
   exit 1
 fi
 
+if ! command -v jq &> /dev/null; then
+  echo "Error: jq is not installed (required for settings rendering)"
+  echo "Install with: brew install jq"
+  exit 1
+fi
+
 # Change to dotfiles directory (stow requires this)
 cd "$DOTFILES"
 
+# Pre-create real directories so stow --no-folding does not recreate them as symlinks
+mkdir -p "$HOME/.claude/hooks"
+
 # Stow packages (target: $HOME)
 echo "Installing packages with stow..."
-PACKAGES=("vim" "bash" "tmux" "claude-code" "readline" "ghostty")
+PACKAGES=("vim" "bash" "tmux" "readline" "ghostty")
 
 for package in "${PACKAGES[@]}"; do
   if [ -d "$package" ]; then
@@ -33,6 +42,27 @@ for package in "${PACKAGES[@]}"; do
     echo "  Warning: $package directory not found, skipping"
   fi
 done
+
+# claude-code uses --no-folding so ~/.claude stays a real directory
+CLAUDE_CODE_STOWED=false
+if [ -d "claude-code" ]; then
+  echo "  Stowing claude-code (--no-folding)..."
+  stow --no-folding -R claude-code
+  CLAUDE_CODE_STOWED=true
+else
+  echo "  Warning: claude-code directory not found, skipping"
+fi
+
+# Render managed Claude settings — only when claude-code was stowed
+echo ""
+echo "Rendering Claude settings..."
+if [ "$CLAUDE_CODE_STOWED" = false ]; then
+  echo "  Skipping (claude-code package not found)"
+elif [ ! -x "$DOTFILES/claude-code/bin/render-settings.sh" ]; then
+  echo "  Warning: render-settings.sh not found or not executable, skipping"
+else
+  "$DOTFILES/claude-code/bin/render-settings.sh"
+fi
 
 # Stow packages with non-HOME targets
 echo ""
