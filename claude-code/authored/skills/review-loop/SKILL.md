@@ -30,6 +30,8 @@ repeat until clean or max iterations reached.
 /<skill-name> --base main --max-iterations 8
 /<skill-name> --dry-run
 /<skill-name> --base main --dry-run
+/<skill-name> --exclude "vendor/*"
+/<skill-name> --exclude "*.generated.ts" --exclude "vendor/*"
 ```
 
 where `<skill-name>` is the `name:` value from this file's frontmatter.
@@ -50,6 +52,7 @@ Before starting the loop:
    - `--base <branch>` → base branch for the diff (default: `main`)
    - `--max-iterations <N>` → max loop iterations (default: `5`)
    - `--dry-run` → preview findings without applying fixes; runs exactly one round
+   - `--exclude <pattern>` → glob pattern matched against each finding's repo-relative filepath; findings that match are silently skipped (not fixed, not counted as introduced). Can be specified multiple times. Useful for generated files, vendored code, or intentional legacy areas (e.g. `--exclude "vendor/*"` or `--exclude "*.generated.ts"`).
 
 3. Verify `codex` is on PATH: `which codex` — if not found, stop with:
    > `codex not found on PATH. Install it and retry.`
@@ -83,6 +86,7 @@ Initialize loop-level state before entering the loop:
 PREV_ATTEMPTED_KEYS=()    # "title||filepath" of findings Step E actually attempted last round
 STUCK_FINDINGS=()         # accumulates stuck findings for the final report
 DRY_RUN=false             # set true if --dry-run was passed
+EXCLUDE_PATTERNS=()       # glob patterns from --exclude; matched against repo-relative filepaths
 ```
 
 ---
@@ -233,7 +237,26 @@ echo '<llm-result-json>' > "$RUN_DIR/rounds/$ROUND/parsed.json"
 
 ### Step D — Triage findings
 
-For each finding, determine whether it was **introduced by this branch** or **pre-existing**
+**Exclude filter (runs before blame triage):**
+
+If `EXCLUDE_PATTERNS` is non-empty, check each finding's repo-relative filepath against
+every pattern using shell glob matching before running `git blame`:
+
+```
+For each finding:
+  For each pattern in EXCLUDE_PATTERNS:
+    if [[ "$repo_relative_filepath" == $pattern ]]:
+      tag finding as "excluded"
+      break
+```
+
+Tag `excluded` findings in the round report but do not fix them and do not count them
+toward `remaining_introduced` or toward the stuck-detection key set. The pattern is
+matched against the repo-relative path (e.g. `vendor/foo.ts`, not `/abs/path/vendor/foo.ts`).
+
+---
+
+For each non-excluded finding, determine whether it was **introduced by this branch** or **pre-existing**
 using `git blame`:
 
 ```bash
@@ -416,6 +439,7 @@ After fixing, print a round report (JSON-shaped, for AI consumption):
   "introduced": <count>,
   "stuck": <count>,
   "pre_existing": <count>,
+  "excluded": <count>,
   "fixed": <count>,
   "skipped": <count>,
   "skipped_reasons": ["finding title: reason"],
@@ -488,6 +512,7 @@ Review loop complete — <N> round(s)
 Outcome: <clean | findings remain | dry-run>
 Fixed: <total fixed across all rounds>
 Pre-existing (not fixed): <count> — out of scope for this branch
+Excluded (skipped by --exclude): <count>
 Remaining unfixed introduced: <count>
 Stuck (manual follow-up required): <count>
 
@@ -521,6 +546,7 @@ cat > "$RUN_DIR/final.json" <<EOF
   "outcome": "<clean | findings_remain | dry_run | error | fallback>",
   "total_fixed": <count>,
   "total_pre_existing": <count>,
+  "total_excluded": <count>,
   "remaining_introduced": <count>,
   "stuck_findings": [
     { "priority": "P1", "title": "...", "filepath": "...", "line_start": N, "line_end": N }
