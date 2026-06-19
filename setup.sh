@@ -74,6 +74,9 @@ if [ -n "$LINK_TARGET" ]; then
   rm "$HOME/.claude"
   mkdir -p "$HOME/.claude"
   # Restore staged files and symlinks into the new real directory at arbitrary depth.
+  # Known limitation: relative symlinks break after moving (their target path is
+  # interpreted relative to the new location). Absolute symlinks are unaffected.
+  # Claude plugins use absolute paths, so this is not expected to occur in practice.
   find "$RUNTIME_STAGING" -mindepth 1 \( -type f -o -type l \) 2>/dev/null \
   | while IFS= read -r staged_file; do
     rel="${staged_file#"$RUNTIME_STAGING/"}"
