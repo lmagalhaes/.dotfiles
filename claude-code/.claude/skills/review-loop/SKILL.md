@@ -27,12 +27,14 @@ repeat until clean or max iterations reached.
 ```
 /<skill-name>
 /<skill-name> --base main
-/<skill-name> --base main --max-iterations 5
+/<skill-name> --base main --max-iterations 8
+/<skill-name> --dry-run
+/<skill-name> --base main --dry-run
 ```
 
 where `<skill-name>` is the `name:` value from this file's frontmatter.
 
-Defaults: `--base main`, `--max-iterations 3`
+Defaults: `--base main`, `--max-iterations 5`
 
 ---
 
@@ -46,7 +48,8 @@ Before starting the loop:
 
 2. Parse `$ARGUMENTS`:
    - `--base <branch>` → base branch for the diff (default: `main`)
-   - `--max-iterations <N>` → max loop iterations (default: `3`)
+   - `--max-iterations <N>` → max loop iterations (default: `5`)
+   - `--dry-run` → preview findings without applying fixes; runs exactly one round
 
 3. Verify `codex` is on PATH: `which codex` — if not found, stop with:
    > `codex not found on PATH. Install it and retry.`
@@ -73,6 +76,14 @@ fi
 ```
 
 `RUN_DIR` is used throughout the loop to save per-round and final artifacts.
+
+Initialize loop-level state before entering the loop:
+
+```
+PREV_ATTEMPTED_KEYS=()    # "title||filepath" of findings Step E actually attempted last round
+STUCK_FINDINGS=()         # accumulates stuck findings for the final report
+DRY_RUN=false             # set true if --dry-run was passed
+```
 
 ---
 
@@ -212,6 +223,8 @@ echo '<llm-result-json>' > "$RUN_DIR/rounds/$ROUND/parsed.json"
 - Do NOT treat the review as clean or proceed with fixing, even if `status == "clean"`.
 
 **If `status == "clean"` (and no fallback):**
+- Clear `STUCK_FINDINGS = []` — a clean review means no finding is stuck anymore; stale
+  stuck state from the previous round must not pollute the final report.
 - Report: `Round <N>: clean — no findings.`
 - Stop the loop. Go to [Final report](#final-report).
 
@@ -273,14 +286,82 @@ before this branch.
 
 Skip `pre_existing` findings for fixing.
 
+**Stuck-loop detection (after all findings are triaged):**
+
+A finding is **stuck** when Step E **actually attempted** to fix it in the immediately
+preceding round AND it is `introduced` again this round — same `title`, `filepath`, and
+`line_start`.
+
+"Attempted" means Step E processed the finding (it was the first introduced finding in
+its file that round). Findings deferred because their file was already edited that round
+are never attempted and therefore can never be stuck.
+
+Including `line_start` in the key distinguishes separate findings with the same title in
+the same file. A false negative (missing stuck when lines shifted slightly) is safer than
+a false positive (marking an unattempted finding as stuck).
+
+```
+THIS_STUCK_FINDINGS=()
+
+For each finding tagged as "introduced":
+  KEY = finding.title + "||" + finding.filepath + "||" + str(finding.line_start)
+
+  If KEY is in PREV_ATTEMPTED_KEYS:
+    Reclassify finding as "stuck"
+    Append finding to THIS_STUCK_FINDINGS
+
+STUCK_FINDINGS = THIS_STUCK_FINDINGS   # replace, not append — prunes resolved findings
+```
+
+`STUCK_FINDINGS` is **replaced** (not appended) each round so that findings resolved
+indirectly by another fix no longer appear in the final report.
+
+Stuck detection does not run in round 1 (`PREV_ATTEMPTED_KEYS` is empty). Only
+`introduced` findings participate — a `pre_existing` finding reappearing is expected and
+does not count toward stuck.
+
+Treat `stuck` like `pre_existing` for **loop-control** purposes: skip it in Step E and
+do not count it toward `remaining_introduced` (so the loop does not burn iterations
+retrying an unresolvable finding). However, `stuck` findings are **not** equivalent to
+`pre_existing` for **reporting** purposes — they are unresolved introduced defects. When
+any stuck findings exist, the final outcome must be `findings_remain`, not `clean`.
+
 ### Step E — Fix introduced findings
+
+**If `--dry-run` is active**, skip all edits and commits for this round. Instead, for each
+`introduced` finding (priority order), print:
+
+```
+Would fix: [P1] Title — filepath:line_start-line_end
+```
+
+Do **not** apply the same-file deferral rule here — no edits are made in dry-run mode so
+line numbers never go stale; all findings in a file can be shown accurately in one pass.
+
+For `stuck` findings, print:
+
+```
+Would skip (stuck): [P1] Title — filepath
+```
+
+Do not edit any files or run any git commands. Go directly to Step F.
+
+**Normal mode** (no `--dry-run`):
+
+Initialize `THIS_ATTEMPTED_KEYS=()` before the loop.
 
 For each `introduced` finding (in priority order, P1 first):
 
-1. Read the relevant file around the affected lines.
-2. Apply a fix using Edit/Write.
-3. Briefly explain what you changed and why (one sentence).
-4. After editing a file, **skip all remaining findings in that same file** for this round.
+1. Skip if the finding is tagged `stuck` — print:
+   > `⚠ Skipping [P1] Title — filepath (stuck: reappeared introduced in consecutive rounds)`
+2. Read the relevant file around the affected lines.
+3. Apply a fix using Edit/Write.
+4. Briefly explain what you changed and why (one sentence).
+5. If the file's content actually changed (i.e. it would show a diff), add the filepath to
+   `FIXED_FILES` and record `THIS_ATTEMPTED_KEYS.append(finding.title + "||" + finding.filepath + "||" + str(finding.line_start))`.
+   If the edit was a no-op, skip both — a no-op must not mark the finding as attempted,
+   or the next round will wrongly classify it as stuck before any real fix was tried.
+6. After editing a file with actual changes, **skip all remaining findings in that same file** for this round.
    Line numbers from the original review are now stale. The next round's codex pass will
    re-report any unresolved issues in that file with updated line numbers.
 
@@ -302,9 +383,24 @@ fi
 Staging by explicit path (not `git add -A` or `git add -u`) avoids accidentally including
 untracked files unrelated to the implementation. The outer guard skips the entire block —
 and avoids a `git add` fatal error on an empty path list — when all findings were
-pre_existing or skipped.
+pre_existing, stuck, or skipped.
 
 These are WIP commits — squash them before merging.
+
+After all fixes (and the commit block), update the attempted-keys state for the next
+round's stuck detection:
+
+```
+STUCK_KEYS = {finding.title + "||" + finding.filepath + "||" + str(finding.line_start)
+              for finding in STUCK_FINDINGS}
+PREV_ATTEMPTED_KEYS = THIS_ATTEMPTED_KEYS ∪ STUCK_KEYS
+```
+
+Unioning in `STUCK_KEYS` keeps stuck findings sticky: if a stuck finding reappears in
+the next round, its key is still in `PREV_ATTEMPTED_KEYS` and it will be reclassified as
+stuck again rather than re-attempted. Without this, overwriting `PREV_ATTEMPTED_KEYS`
+with only the current round's attempts forgets stuck findings after one skipped step,
+causing an attempt/skip/attempt oscillation.
 
 If a finding is ambiguous (you are unsure how to fix it safely), skip it and note it in the
 round report.
@@ -318,6 +414,7 @@ After fixing, print a round report (JSON-shaped, for AI consumption):
   "round": <N>,
   "total_findings": <count>,
   "introduced": <count>,
+  "stuck": <count>,
   "pre_existing": <count>,
   "fixed": <count>,
   "skipped": <count>,
@@ -325,6 +422,9 @@ After fixing, print a round report (JSON-shaped, for AI consumption):
   "remaining_introduced": <count>
 }
 ```
+
+`remaining_introduced` counts only unfixed non-stuck `introduced` findings. Stuck findings
+are counted separately in the `stuck` field and always produce a `findings_remain` outcome.
 
 Save this report to the run directory:
 
@@ -336,7 +436,7 @@ If `remaining_introduced == 0` and iterations remain and no verification pass ha
 yet this loop, do **not** stop yet — mark that the verification pass has been used and run
 one more iteration. This pass counts against `--max-iterations`. On it:
 - `status == "clean"` → stop (truly clean)
-- All findings are `pre_existing` → stop (only out-of-scope issues remain)
+- All findings are `pre_existing` or `stuck` → stop (nothing auto-fixable remains)
 - Any finding is `introduced` → clear the verification-pass flag and continue fixing
 
 After a verification pass, if `remaining_introduced == 0`, stop — do not schedule a second
@@ -346,6 +446,9 @@ iteration.
 If no iterations remain when `remaining_introduced == 0`, stop without the verification
 pass and note in the final report that the clean-pass was skipped due to the iteration
 limit.
+
+If `--dry-run` is active, stop the loop after this round regardless of
+`remaining_introduced` — looping would show identical findings since nothing was changed.
 
 If `remaining_introduced > 0` and more iterations remain, go back to Step A with any
 rejection context (see below).
@@ -377,15 +480,24 @@ This allows codex to re-reason in the next round with full rejection context ava
 After the loop ends, print a summary:
 
 ```
+<If --dry-run:>
+(dry-run — no changes applied)
+
 Review loop complete — <N> round(s)
 
-Outcome: <clean | findings remain>
+Outcome: <clean | findings remain | dry-run>
 Fixed: <total fixed across all rounds>
 Pre-existing (not fixed): <count> — out of scope for this branch
 Remaining unfixed introduced: <count>
+Stuck (manual follow-up required): <count>
 
 <If remaining > 0:>
 Remaining findings (introduced by this branch, not fixed):
+- [P1] <title> — <filepath>:<line_start>-<line_end>
+  <description>
+
+<If STUCK_FINDINGS non-empty:>
+Manual follow-up required (stuck — auto-fix could not resolve):
 - [P1] <title> — <filepath>:<line_start>-<line_end>
   <description>
 
@@ -406,10 +518,13 @@ cat > "$RUN_DIR/final.json" <<EOF
   "timestamp": "<run-timestamp>",
   "base": "<base-branch>",
   "rounds": <N>,
-  "outcome": "<clean | findings_remain | error | fallback>",
+  "outcome": "<clean | findings_remain | dry_run | error | fallback>",
   "total_fixed": <count>,
   "total_pre_existing": <count>,
   "remaining_introduced": <count>,
+  "stuck_findings": [
+    { "priority": "P1", "title": "...", "filepath": "...", "line_start": N, "line_end": N }
+  ],
   "run_dir": "$RUN_DIR"
 }
 EOF
