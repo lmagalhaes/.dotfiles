@@ -28,12 +28,12 @@ export BUILDKIT_PROGRESS=plain
 export SSH_OPTS="-o StrictHostKeyChecking=accept-new"
 export CLAUDE_CODE_DISABLE_ALTERNATE_SCREEN=1
 
-if [[ -s "$HOMEBREW_PREFIX/opt/nvm/nvm.sh" ]]; then
-    source "$HOMEBREW_PREFIX/opt/nvm/nvm.sh"
-fi
-
 if [[ $- != *i* ]]; then
     return
+fi
+
+if [[ -s "$HOMEBREW_PREFIX/opt/nvm/nvm.sh" ]]; then
+    source "$HOMEBREW_PREFIX/opt/nvm/nvm.sh"
 fi
 
 shopt -s nocaseglob
@@ -46,6 +46,19 @@ shopt -s histappend
 shopt -s cdspell
 shopt -s no_empty_cmd_completion
 shopt -s checkwinsize
+shopt -s autocd
+shopt -s dirspell
+shopt -s cmdhist
+shopt -s lithist
+shopt -s extglob
+
+bind '"\e[A": history-search-backward'
+bind '"\e[B": history-search-forward'
+
+HISTSIZE=10000
+HISTFILESIZE=20000
+HISTCONTROL=ignoreboth:erasedups
+HISTTIMEFORMAT='%F %T  '
 
 if command_exists keychain; then
     eval "$(keychain -q --timeout 480 --eval ~/.ssh/id_ed25519 ~/.ssh/id_rsa)"
@@ -126,4 +139,7 @@ done
 
 if command_exists zoxide; then
     eval "$(zoxide init bash)"
+fi
+if command_exists fzf; then
+    eval "$(fzf  --bash)"
 fi
