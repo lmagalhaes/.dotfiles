@@ -1,0 +1,32 @@
+#!/usr/bin/env bash
+
+command_exists() {
+    command -v "$1" >/dev/null 2>&1
+}
+
+source_if_exists() {
+    local file_path="$1"
+    [[ -f "$file_path" ]] && source "$file_path"
+}
+
+path_prepend() {
+    local dir="$1"
+
+    [[ -d "$dir" ]] || return
+
+    case ":$PATH:" in
+        *":$dir:"*) ;;
+        *) PATH="$dir${PATH:+:$PATH}" ;;
+    esac
+}
+
+path_append() {
+    local dir="$1"
+
+    [[ -d "$dir" ]] || return
+
+    case ":$PATH:" in
+        *":$dir:"*) ;;
+        *) PATH="${PATH:+$PATH:}$dir" ;;
+    esac
+}
