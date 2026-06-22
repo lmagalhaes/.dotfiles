@@ -18,7 +18,7 @@ cd ~/.dotfiles && stow -nv <package>
 cd ~/.dotfiles && stow -D <package>
 ```
 
-Stow packages: `vim bash tmux claude-code readline ghostty`
+Stow packages: `vim bash tmux readline ghostty`
 
 ## Package Management
 
@@ -34,7 +34,7 @@ brew bundle --file=~/.dotfiles/Brewfile
 
 ### Stow-based symlink management
 
-Each top-level directory is a stow **package**. Files inside mirror their destination path relative to `$HOME`. For example, `bash/.bashrc` → `~/.bashrc`, `claude-code/.claude/CLAUDE.md` → `~/.claude/CLAUDE.md`.
+Each top-level directory is a stow **package**. Files inside mirror their destination path relative to `$HOME`. For example, `bash/.bashrc` → `~/.bashrc`.
 
 `stow` is always run from `~/.dotfiles/` — it uses the current directory as the stow dir and `$HOME` as the target.
 
@@ -55,9 +55,14 @@ Scripts in `bin/` are available as git subcommands (e.g., `git worktree-create`)
 
 Worktrees are created under `<repo>/.worktrees/<branch-name>/`. The create script also generates a Docker compose file from `templates/compose.worktree.template.yaml` for parallel container environments.
 
-### claude-code/ package
+### claude-code/ directory (not stowed)
 
-Symlinks to `~/.claude/` and `~/.config/claude-code/`. Contains Claude Code's global `CLAUDE.md`, custom slash commands (`commands/`), session management scripts (`scripts/`), and language-specific contexts (`contexts/`).
+Contains all authored Claude Code configuration. Not managed by stow — `setup.sh` calls two helper scripts instead:
+
+- `scripts/link-claude-entrypoints.sh` — creates directory-level symlinks in `~/.claude/` pointing into `authored/`
+- `scripts/render-claude-settings.sh` — merges `authored/config/settings.managed.json` into `~/.claude/settings.json`
+
+`authored/` holds rules, skills, hooks, scripts, and plans. A new file added under `authored/rules/` or `authored/skills/` appears live in `~/.claude/` immediately without re-running setup.
 
 ### macos/
 
