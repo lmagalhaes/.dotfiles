@@ -1,7 +1,7 @@
-#!/usr/bin/env bash
+# shellcheck shell=bash
 
 source "$HOME/.bashrc"
 
 if command_exists pyenv; then
-    eval "$(pyenv init --path --no-rehash)"
+    eval "$(pyenv init --path --no-rehash bash)"
 fi

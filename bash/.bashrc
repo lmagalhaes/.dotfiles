@@ -1,4 +1,4 @@
-#!/usr/bin/env bash
+# shellcheck shell=bash
 
 DOTFILES_PATH="${DOTFILES_PATH:-$HOME/.dotfiles}"
 
@@ -60,7 +60,7 @@ if [[ -s "$HOMEBREW_PREFIX/opt/nvm/etc/bash_completion.d/nvm" ]]; then
 fi
 
 if command_exists pyenv; then
-    eval "$(pyenv init - --no-rehash)"
+    eval "$(pyenv init - --no-rehash bash)"
 fi
 
 if [[ -r "$HOMEBREW_PREFIX/etc/profile.d/bash_completion.sh" ]]; then
@@ -86,8 +86,6 @@ COLOR_GREEN='\[\e[0;32m\]'
 COLOR_CYAN='\[\e[0;36m\]'
 COLOR_LIGHT_BLUE='\[\e[1;34m\]'
 COLOR_RED='\[\e[0;31m\]'
-COLOR_YELLOW='\[\e[1;33m\]'
-
 _shorten_pwd() {
     local pwd="$PWD"
     pwd="${pwd/#$HOME\/workspace\/lmagalhaes/@lm}"
@@ -104,7 +102,8 @@ _set_ps1() {
     else
         status_icon="${COLOR_RED}✗"
     fi
-    local pre="${status_icon} ${COLOR_GREEN}\\u@${COLOR_CYAN}\\h:${COLOR_LIGHT_BLUE}$(_shorten_pwd)"
+    local pre
+    pre="${status_icon} ${COLOR_GREEN}\\u@${COLOR_CYAN}\\h:${COLOR_LIGHT_BLUE}$(_shorten_pwd)"
     local post="\n${COLOR_NC}\\$ "
     if declare -F __git_ps1 >/dev/null 2>&1; then
         __git_ps1 "$pre" "$post" " [ %s ]"
@@ -113,7 +112,7 @@ _set_ps1() {
     fi
 }
 
-PROMPT_COMMAND=_set_ps1
+PROMPT_COMMAND=(_set_ps1)
 
 source "$HOME/.orbstack/shell/init.bash" 2>/dev/null || :
 

@@ -1,11 +1,20 @@
+#!/usr/bin/env bash
+
 _flux_completion() {
     local IFS=$'\n'
     local response
+    local completion
+    local type
+    local value
 
-    response=$(env COMP_WORDS="${COMP_WORDS[*]}" COMP_CWORD=$COMP_CWORD _FLUX_COMPLETE=bash_complete $1)
+    response=$(env \
+        COMP_WORDS="${COMP_WORDS[*]}" \
+        COMP_CWORD="$COMP_CWORD" \
+        _FLUX_COMPLETE=bash_complete \
+        "$1")
 
     for completion in $response; do
-        IFS=',' read type value <<< "$completion"
+        IFS=',' read -r type value <<< "$completion"
 
         if [[ $type == 'dir' ]]; then
             COMPREPLY=()
@@ -14,7 +23,7 @@ _flux_completion() {
             COMPREPLY=()
             compopt -o default
         elif [[ $type == 'plain' ]]; then
-            COMPREPLY+=($value)
+            COMPREPLY+=("$value")
         fi
     done
 
@@ -25,5 +34,4 @@ _flux_completion_setup() {
     complete -o nosort -F _flux_completion flux
 }
 
-_flux_completion_setup;
-
+_flux_completion_setup
