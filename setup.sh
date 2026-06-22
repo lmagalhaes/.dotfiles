@@ -102,41 +102,17 @@ for package in "${PACKAGES[@]}"; do
   fi
 done
 
-# claude-code uses --no-folding so ~/.claude stays a real directory
-# A dangling symlink (old target deleted, e.g. after re-cloning) should be cleaned
-# up so stow can proceed — it is not a live custom symlink to preserve.
-if [ -L "$HOME/.claude" ] && [ ! -e "$HOME/.claude" ]; then
-  echo "  Removing dangling ~/.claude symlink (old target no longer exists)..."
-  rm "$HOME/.claude"
-fi
-CLAUDE_CODE_STOWED=false
-if [ -L "$HOME/.claude" ] && [ -z "$LINK_TARGET" ]; then
-  # ~/.claude is a live custom symlink we did not migrate — stow would abort here.
-  echo "  Warning: ~/.claude is a custom symlink — skipping claude-code stow."
-  echo "  Remove or replace ~/.claude to install the managed config."
-elif [ -d "claude-code" ]; then
-  # Pre-create real directories so stow --no-folding does not recreate them as symlinks.
-  # Only done here (not unconditionally) to avoid mutating a custom ~/.claude symlink target.
-  mkdir -p "$HOME/.claude/hooks"
-  echo "  Stowing claude-code (--no-folding)..."
-  stow --no-folding -R claude-code
-  CLAUDE_CODE_STOWED=true
-else
-  echo "  Warning: claude-code directory not found, skipping"
-fi
-
-# Render managed Claude settings — only when claude-code was stowed
+# Claude Code — link authored entrypoints and render settings
 echo ""
-echo "Rendering Claude settings..."
-if [ "$CLAUDE_CODE_STOWED" = false ]; then
-  echo "  Skipping (claude-code package not found)"
-elif [ ! -x "$DOTFILES/claude-code/bin/render-settings.sh" ]; then
-  echo "  Warning: render-settings.sh not found or not executable, skipping"
+echo "Setting up Claude Code..."
+if [ ! -d "claude-code" ]; then
+  echo "  Warning: claude-code directory not found, skipping"
 elif ! command -v jq &> /dev/null; then
   echo "  Warning: jq not installed — Claude settings not rendered"
   echo "  Install with: brew install jq, then re-run setup.sh"
 else
-  "$DOTFILES/claude-code/bin/render-settings.sh"
+  bash "$DOTFILES/claude-code/scripts/link-claude-entrypoints.sh"
+  bash "$DOTFILES/claude-code/scripts/render-claude-settings.sh"
 fi
 
 # Stow packages with non-HOME targets
