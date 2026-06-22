@@ -60,4 +60,9 @@ link "RTK.md"      "authored/RTK.md"
 link "rules"  "authored/rules"
 link "skills" "authored/skills"
 
+# hooks/ and scripts/ are NOT linked separately — they are accessed by Claude Code
+# via the authored/ tree (e.g. ~/.claude/authored/hooks/rtk-rewrite.sh). Keeping
+# them out of the top-level avoids a real directory at ~/.claude/hooks/ that stow
+# or other tools might try to manage.
+
 echo "Done."
