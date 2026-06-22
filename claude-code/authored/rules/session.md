@@ -1,10 +1,10 @@
 # Session Management
 
 ## Commands
-- /wy-session-status — check token usage, health, get recommendations
-- /wy-wrap-session — save session context to branch-keyed file
-- /wy-wrap-session --preview — show what would be saved without writing
-- /wy-load-session — show 3-line hint; --full for complete content
+- /task-context:status — check token usage, health, get recommendations
+- /task-context:wrap — save session context to branch-keyed file
+- /task-context:wrap --preview — show what would be saved without writing
+- /task-context:load — load context from previous session on this branch
 
 ## Auto-Load Hint (start of every conversation)
 
@@ -12,14 +12,14 @@ If .claude/sessions/<branch>/ exists, display:
 ```
 Session: <branch> (saved Nd ago · M commits) — N decisions, P assumptions open
 Resume: <start_here value>
-Run /wy-load-session --full for decisions and watch-outs
+Run /task-context:load for decisions and watch-outs
 ```
 
 This is a resume pointer only — not a substitute for fresh task discovery.
-Do NOT load full session content automatically; user runs /wy-load-session --full if needed.
+Do NOT load full session content automatically; user runs /task-context:load if needed.
 
 ## Wrap Triggers
-- 150k tokens: strongly suggest /wy-wrap-session --preview then /wy-wrap-session
+- 150k tokens: strongly suggest /task-context:wrap --preview then /task-context:wrap
 - Context overflow occurs at ~150k, not the 200k nominal limit
 
 ## Session vs Auto-Memory

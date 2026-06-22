@@ -28,7 +28,7 @@ Run the script and format the JSON output as a nice table:
 **Latest:** {latest}
 **Total:** {total} sessions
 
-💡 /wy-load-session to load latest, /wy-load-session {id} for specific
+💡 /task-context:load to load latest session context
 ```
 
 **Rules:**
