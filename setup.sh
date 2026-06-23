@@ -35,6 +35,11 @@ for package in "${PACKAGES[@]}"; do
   fi
 done
 
+# Git config
+mkdir -p "${HOME}/.config/git"
+echo "  Stowing git..."
+stow -R --target "$HOME/.config/git" git
+
 # Claude Code — link authored entrypoints and render settings
 echo ""
 echo "Setting up Claude Code..."
@@ -59,39 +64,6 @@ if [ -d "rtk" ]; then
   stow -R --target "$RTK_TARGET" rtk
 else
   echo "  Warning: rtk directory not found, skipping"
-fi
-
-echo ""
-
-# Git config (special case - create file with include, not symlink)
-# This allows tools to add machine-local config
-echo "Setting up git config..."
-if [ -L "$HOME/.gitconfig" ]; then
-  echo "  Removing old symlink $HOME/.gitconfig"
-  rm "$HOME/.gitconfig"
-fi
-
-if [ -f "$HOME/.gitconfig" ] && grep -q "path = ~/.dotfiles/git/main.gitconfig" "$HOME/.gitconfig" 2>/dev/null; then
-  echo "  Skipping $HOME/.gitconfig (already configured)"
-elif [ -f "$HOME/.gitconfig" ] && grep -q "path = ~/.dotfiles/git-profiles/main.gitconfig" "$HOME/.gitconfig" 2>/dev/null; then
-  echo "  Updating old git-profiles path to git/"
-  sed -i.bak 's|git-profiles/|git/|g' "$HOME/.gitconfig"
-  rm "$HOME/.gitconfig.bak"
-  echo "  Updated $HOME/.gitconfig"
-else
-  if [ -f "$HOME/.gitconfig" ]; then
-    echo "  Backing up $HOME/.gitconfig to $HOME/.gitconfig.backup"
-    mv "$HOME/.gitconfig" "$HOME/.gitconfig.backup"
-  fi
-  cat > "$HOME/.gitconfig" << 'EOF'
-# Machine-local git config
-# Includes dotfiles config, keeps local/tool-generated configs separate
-[include]
-    path = ~/.dotfiles/git/main.gitconfig
-
-# Machine-specific configs added below by tools (CodeRabbit, etc.)
-EOF
-  echo "  Created $HOME/.gitconfig"
 fi
 
 echo ""

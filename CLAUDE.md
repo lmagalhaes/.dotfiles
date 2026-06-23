@@ -38,11 +38,15 @@ Each top-level directory is a stow **package**. Files inside mirror their destin
 
 `stow` is always run from `~/.dotfiles/` — it uses the current directory as the stow dir and `$HOME` as the target.
 
-### Git config (not stowed)
+### Git config (stowed to `~/.config/git`)
 
-`~/.gitconfig` is a real file (not a symlink) containing a single `[include]` pointing to `~/.dotfiles/git/main.gitconfig`. This lets tools (gh, CodeRabbit, etc.) append machine-specific config without polluting version control.
+The `git/` package is stowed with `~/.config/git` as the target — git reads this location natively via XDG. Stow is run with `stow -R --target "$HOME/.config/git" git` in `setup.sh`.
 
-**Config load order:** `main.gitconfig` → `base.gitconfig` → profile (`profiles/*.gitconfig`) → host override (`hosts/*.gitconfig`). Profile and host files are included via `includeIf` rules in `main.gitconfig`.
+`~/.config/git/config` is the entry point (stowed symlink). It includes `main.gitconfig` and holds any machine-local tool config (e.g. CodeRabbit machine ID) that tools append directly.
+
+**Config load order:** `config` → `main.gitconfig` → `base.gitconfig` → profile (`profiles/*.gitconfig`) → host override (`hosts/*.gitconfig`). All includes use relative paths. Profile and host files are included via `includeIf` rules in `main.gitconfig`.
+
+`ignore` is stowed to `~/.config/git/ignore` — git reads it automatically with no `core.excludesfile` needed.
 
 To add a new identity, copy `git/profiles/profile-template.gitconfig` and add an `includeIf "gitdir:..."` in `main.gitconfig`.
 
