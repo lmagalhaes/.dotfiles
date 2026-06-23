@@ -138,7 +138,7 @@ for completion_file in "$HOME"/.bash_completion.d/*; do
 done
 
 if command_exists zoxide; then
-    eval "$(zoxide init bash)"
+    eval "$(zoxide init --cmd cd bash)"
 fi
 if command_exists fzf; then
     eval "$(fzf  --bash)"
