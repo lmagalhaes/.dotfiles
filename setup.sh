@@ -52,6 +52,23 @@ for package in "${PACKAGES[@]}"; do
   fi
 done
 
+# mise — dedicated block to avoid the mise-config/ dir being mistaken for a project config
+# (mise scans for mise/config.toml in the working directory; using mise/ as the package name triggers that)
+if [ -d "mise-config" ]; then
+  mkdir -p "$HOME/.config/mise"
+  echo "  Stowing mise-config -> $HOME/.config/mise"
+  stow -R --target "$HOME/.config/mise" mise-config
+  if command -v mise &> /dev/null; then
+    echo "  Installing mise runtimes..."
+    mise trust "$HOME/.config/mise/config.toml"
+    mise install
+  else
+    echo "  Warning: mise not found — install it then run: mise install"
+  fi
+else
+  echo "  Warning: mise-config directory not found, skipping"
+fi
+
 # Claude Code — link authored entrypoints and render settings
 echo ""
 echo "Setting up Claude Code..."

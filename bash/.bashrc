@@ -20,9 +20,9 @@ path_prepend "$HOMEBREW_PREFIX/opt/libpq/bin"
 path_prepend "$HOMEBREW_PREFIX/opt/gnu-sed/libexec/gnubin"
 path_prepend "$HOMEBREW_PREFIX/opt/mysql@8.0/bin"
 path_prepend "$HOME/.local/bin"
+path_prepend "${XDG_DATA_HOME:-$HOME/.local/share}/mise/shims"
 path_append "$HOME/Library/Application Support/JetBrains/Toolbox/scripts"
 
-export NVM_DIR="$HOME/.nvm"
 export HOMEBREW_BUNDLE_FILE="$DOTFILES_PATH/Brewfile"
 export BUILDKIT_PROGRESS=plain
 export SSH_OPTS="-o StrictHostKeyChecking=accept-new"
@@ -30,10 +30,6 @@ export CLAUDE_CODE_DISABLE_ALTERNATE_SCREEN=1
 
 if [[ $- != *i* ]]; then
     return
-fi
-
-if [[ -s "$HOMEBREW_PREFIX/opt/nvm/nvm.sh" ]]; then
-    source "$HOMEBREW_PREFIX/opt/nvm/nvm.sh"
 fi
 
 shopt -s nocaseglob
@@ -67,14 +63,6 @@ fi
 
 if command_exists task; then
     eval "$(task --completion bash)"
-fi
-
-if [[ -s "$HOMEBREW_PREFIX/opt/nvm/etc/bash_completion.d/nvm" ]]; then
-    source "$HOMEBREW_PREFIX/opt/nvm/etc/bash_completion.d/nvm"
-fi
-
-if command_exists pyenv; then
-    eval "$(pyenv init - --no-rehash bash)"
 fi
 
 if [[ -r "$HOMEBREW_PREFIX/etc/profile.d/bash_completion.sh" ]]; then
@@ -144,3 +132,8 @@ fi
 if command_exists fzf; then
     eval "$(fzf  --bash)"
 fi
+
+if command_exists mise; then
+    eval "$(mise activate bash)"
+fi
+

@@ -12,7 +12,3 @@ export XDG_CACHE_HOME="${XDG_CACHE_HOME:-$HOME/.cache}"
 export XDG_STATE_HOME="${XDG_STATE_HOME:-$HOME/.local/state}"
 
 source "$HOME/.bashrc"
-
-if command_exists pyenv; then
-    eval "$(pyenv init --path --no-rehash bash)"
-fi
