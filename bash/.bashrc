@@ -55,6 +55,7 @@ shopt -s extglob
 bind '"\e[A": history-search-backward'
 bind '"\e[B": history-search-forward'
 
+HISTFILE="${XDG_STATE_HOME:-$HOME/.local/state}/bash/history"
 HISTSIZE=10000
 HISTFILESIZE=20000
 HISTCONTROL=ignoreboth:erasedups

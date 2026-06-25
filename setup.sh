@@ -18,6 +18,9 @@ if ! command -v stow &> /dev/null; then
   exit 1
 fi
 
+# Ensure XDG state dirs exist
+mkdir -p "${XDG_STATE_HOME:-$HOME/.local/state}/bash"
+
 # Change to dotfiles directory (stow requires this)
 cd "$DOTFILES"
 
