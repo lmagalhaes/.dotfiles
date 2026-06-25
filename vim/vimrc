@@ -55,13 +55,13 @@ set cursorline          " Highlight current line
 " Centralized backup files (clean workspace but safe)
 set backup
 set writebackup
-set backupdir=~/.vim/backup/
-set directory=~/.vim/swap/
-set undodir=~/.vim/undo/
+set backupdir=$XDG_CACHE_HOME/vim/backup//
+set directory=$XDG_CACHE_HOME/vim/swap//
+set undodir=$XDG_DATA_HOME/vim/undo
 set undofile                " Persistent undo across sessions
 
-" Create backup directories if they don't exist
-silent !mkdir -p ~/.vim/backup ~/.vim/swap ~/.vim/undo
+" Create data/cache directories if they don't exist
+silent !mkdir -p $XDG_CACHE_HOME/vim/backup $XDG_CACHE_HOME/vim/swap $XDG_DATA_HOME/vim/undo
 
 " File-type specific indentation
 autocmd FileType yaml,yml setlocal ts=2 sts=2 sw=2 expandtab
@@ -149,9 +149,10 @@ inoremap jj <esc>
 nnoremap n nzz
 nnoremap N Nzz
 
-" Plug 'junegunn/fzf' is the 'native' plugin that comes with the fzf repo
-" Plug 'junegunn/fzf.vim' is an additional plugin with more commands/options
-call plug#begin('~/.vim/plugged')
+" Extend runtimepath to include XDG data dir so vim-plug's autoload is found
+let &runtimepath = $XDG_DATA_HOME . '/vim,' . &runtimepath . ',' . $XDG_DATA_HOME . '/vim/after'
+
+call plug#begin($XDG_DATA_HOME . '/vim/plugged')
 Plug 'junegunn/fzf', { 'do': { -> fzf#install() } }
 Plug 'junegunn/fzf.vim'
 Plug 'christoomey/vim-tmux-navigator'
