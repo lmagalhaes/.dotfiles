@@ -24,7 +24,7 @@ cd "$DOTFILES"
 
 # Stow packages (target: $HOME)
 echo "Installing packages with stow..."
-PACKAGES=("bash" "ghostty")
+PACKAGES=("bash")
 
 for package in "${PACKAGES[@]}"; do
   if [ -d "$package" ]; then
@@ -36,7 +36,7 @@ for package in "${PACKAGES[@]}"; do
 done
 
 echo "Installing packages with stow (XDG)..."
-PACKAGES=("tmux" "git" "readline" "vim")
+PACKAGES=("tmux" "git" "readline" "vim" "ghostty")
 
 for package in "${PACKAGES[@]}"; do
   if [ -d "$package" ]; then
