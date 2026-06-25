@@ -39,12 +39,11 @@ GNU Stow creates symlinks from package directories to your home directory. Each 
 │   ├── .bash_profile       → ~/.bash_profile
 │   ├── .aliases            → ~/.aliases
 │   └── .bash_completion.d/ → ~/.bash_completion.d/
-├── tmux/
-│   └── .tmux/              → ~/.tmux/
-│       ├── .tmux.conf      → ~/.tmux.conf
-│       ├── conf/           # Config modules
-│       ├── projects/       # Project launcher scripts
-│       └── *.sh            # Helper scripts
+├── tmux/                   # Stowed to ~/.config/tmux/ (XDG)
+│   ├── tmux.conf           → ~/.config/tmux/tmux.conf
+│   ├── conf/               → ~/.config/tmux/conf/
+│   ├── projects/           → ~/.config/tmux/projects/
+│   └── *.sh                → ~/.config/tmux/*.sh
 ├── claude-code/
 │   ├── .claude/            → ~/.claude/
 │   │   ├── CLAUDE.md       # Global AI assistant preferences
@@ -54,8 +53,9 @@ GNU Stow creates symlinks from package directories to your home directory. Each 
 │   └── .config/
 │       └── claude-code/    → ~/.config/claude-code/
 │           └── settings.json
-├── git/                    # Not stowed (uses include pattern)
-│   ├── main.gitconfig      # Entry point
+├── git/                    # Stowed to ~/.config/git/ (XDG)
+│   ├── config              → ~/.config/git/config
+│   ├── main.gitconfig      # Shared entry point (included by config)
 │   ├── base.gitconfig      # Shared defaults
 │   ├── profiles/           # Per-identity configs
 │   └── hosts/              # Per-host overrides
@@ -72,17 +72,20 @@ All commands should be run from `~/.dotfiles/`:
 ```bash
 cd ~/.dotfiles
 
-# Install all packages
-stow vim bash tmux claude-code
+# Install HOME-target packages
+stow vim bash claude-code
 
-# Install specific package
-stow vim
+# Install XDG packages (tmux, git use ~/.config/<package> as target)
+~/.dotfiles/setup.sh
 
-# Reinstall/update package (use when you add new files)
+# Reinstall/update a HOME-target package
 stow -R bash
 
-# Uninstall package (removes symlinks)
-stow -D tmux
+# Reinstall/update an XDG package
+stow -R --target "$HOME/.config/tmux" tmux
+
+# Uninstall a HOME-target package
+stow -D bash
 
 # Dry run (see what would happen)
 stow -nv vim
@@ -105,7 +108,8 @@ Creates: `~/.vimrc → ~/.dotfiles/vim/.vimrc`
 
 ```bash
 cd ~/.dotfiles
-stow bash tmux claude-code
+stow bash claude-code
+stow -R --target "$HOME/.config/tmux" tmux
 ```
 
 ### Uninstall Package
@@ -117,26 +121,18 @@ stow -D bash
 
 Removes all symlinks created by the bash package.
 
-## Git Configuration (Special Case)
+## Git Configuration
 
-Git config is **not managed by stow** - it uses an include pattern to allow machine-specific configs:
-
-**How it works:**
-- `~/.gitconfig` is a real file (not symlink)
-- Contains `[include] path = ~/.dotfiles/git/main.gitconfig`
-- Tools can add machine-specific configs without affecting version control
+Git config is stowed to `~/.config/git/` (XDG Base Directory) — git reads this location natively with no extra configuration needed.
 
 **Setup (automatic):**
 ```bash
-~/.dotfiles/setup.sh  # Creates ~/.gitconfig with include
+~/.dotfiles/setup.sh  # Stows git to ~/.config/git/
 ```
 
-**Manual setup:**
+**Manual:**
 ```bash
-cat > ~/.gitconfig << 'EOF'
-[include]
-    path = ~/.dotfiles/git/main.gitconfig
-EOF
+stow -R --target "$HOME/.config/git" git
 ```
 
 See `git/README.md` for multi-profile setup.
