@@ -74,10 +74,8 @@ if command_exists aws && command_exists aws_completer; then
 fi
 
 source_if_exists "$HOME/.aliases"
-source_if_exists "$HOME/.bash/aws-sso-util-complete-create.sh"
-source_if_exists "$HOME/.bash/kubectl-completion.bash"
-source_if_exists "$HOME/.bash/poetry-completion.bash"
-source_if_exists "$HOME/.bash/git-prompt.sh"
+source_if_exists "$HOMEBREW_PREFIX/etc/bash_completion.d/git-prompt.sh"
+source_if_exists "${XDG_DATA_HOME:-$HOME/.local/share}/bash-completion/completions/git-worktree-completion.bash"
 
 export GIT_PS1_SHOWCOLORHINTS=true
 export GIT_PS1_SHOWUNTRACKEDFILES=true
@@ -121,10 +119,6 @@ source "$HOME/.orbstack/shell/init.bash" 2>/dev/null || :
 if command_exists orb; then
     eval "$(orb completion bash)"
 fi
-
-for completion_file in "$HOME"/.bash_completion.d/*; do
-    [[ -f "$completion_file" ]] && source "$completion_file"
-done
 
 if command_exists zoxide; then
     eval "$(zoxide init --cmd cd bash)"

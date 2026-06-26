@@ -38,6 +38,18 @@ for package in "${PACKAGES[@]}"; do
   fi
 done
 
+echo "Generating shell completions..."
+COMPLETIONS_DIR="${XDG_DATA_HOME:-$HOME/.local/share}/bash-completion/completions"
+mkdir -p "$COMPLETIONS_DIR"
+if command -v kubectl &> /dev/null; then
+  echo "  kubectl..."
+  kubectl completion bash > "$COMPLETIONS_DIR/kubectl"
+fi
+if command -v poetry &> /dev/null; then
+  echo "  poetry..."
+  poetry completions bash > "$COMPLETIONS_DIR/poetry"
+fi
+
 echo "Installing packages with stow (XDG)..."
 PACKAGES=("tmux" "git" "readline" "vim" "ghostty")
 
