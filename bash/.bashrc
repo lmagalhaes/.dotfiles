@@ -18,8 +18,9 @@ path_prepend "$HOME/bin"
 path_prepend "$DOTFILES_PATH/bin"
 path_prepend "$HOMEBREW_PREFIX/opt/libpq/bin"
 path_prepend "$HOMEBREW_PREFIX/opt/gnu-sed/libexec/gnubin"
-path_prepend "$HOMEBREW_PREFIX/opt/mysql@8.0/bin"
+path_prepend "$HOMEBREW_PREFIX/opt/mysql-client@8.4/bin"
 path_prepend "$HOME/.local/bin"
+path_prepend "$HOME/go/bin"
 path_prepend "${XDG_DATA_HOME:-$HOME/.local/share}/mise/shims"
 path_append "$HOME/Library/Application Support/JetBrains/Toolbox/scripts"
 
@@ -121,7 +122,8 @@ if command_exists orb; then
 fi
 
 if command_exists zoxide; then
-    eval "$(zoxide init --cmd cd bash)"
+    # eval "$(zoxide init bash)"
+    eval "$(zoxide init bash)"
 fi
 if command_exists fzf; then
     eval "$(fzf  --bash)"
