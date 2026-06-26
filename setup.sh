@@ -77,6 +77,13 @@ if [ -d "mise-config" ]; then
   else
     echo "  Warning: mise not found — install it then run: mise install"
   fi
+
+  if command -v go &> /dev/null; then
+    echo "  Installing tpack..."
+    go install github.com/tmuxpack/tpack/cmd/tpack@latest
+  else
+    echo "  Warning: go not found — install it then run: go install github.com/tmuxpack/tpack/cmd/tpack@latest"
+  fi
 else
   echo "  Warning: mise-config directory not found, skipping"
 fi

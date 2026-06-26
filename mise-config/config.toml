@@ -2,6 +2,8 @@
 python.uv_venv_auto = "create|source"
 
 [tools]
+go = "latest"
 node = "lts"
 python = "3.13"
+terraform = "latest"
 uv = "latest"
