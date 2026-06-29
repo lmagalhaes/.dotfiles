@@ -28,6 +28,7 @@ export HOMEBREW_BUNDLE_FILE="$DOTFILES_PATH/Brewfile"
 export BUILDKIT_PROGRESS=plain
 export SSH_OPTS="-o StrictHostKeyChecking=accept-new"
 export CLAUDE_CODE_DISABLE_ALTERNATE_SCREEN=1
+export LESS=FRX
 
 if [[ $- != *i* ]]; then
     return

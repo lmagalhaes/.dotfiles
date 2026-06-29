@@ -23,6 +23,9 @@
 [help]
     autoCorrect = 1
 
+[core]
+    pager = less -FRX
+
 [color]
     ui = auto
 
