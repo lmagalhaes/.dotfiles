@@ -38,7 +38,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash ~/.claude/authored/hooks/check-meetings.sh"
+            "command": "bash ~/.claude/skills/fetch-meetings/check-meetings.sh"
           }
         ]
       }
