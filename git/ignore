@@ -24,3 +24,4 @@ npm-debug.log
 .worktrees/
 
 **/.claude/settings.local.json
+**/.claude/plans/
