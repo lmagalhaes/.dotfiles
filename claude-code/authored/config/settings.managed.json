@@ -83,6 +83,8 @@
       "Write(~/.claude/sessions/**)",
       "Write(**/.claude/sessions/**)",
       "Skill(fetch-meetings)",
+      "Skill(task-context:load)",
+      "Skill(task-context:wrap)",
       "mcp__claude_ai_Google_Calendar__list_events",
       "mcp__claude_ai_Google_Calendar__list_calendars",
       "Write(~/.claude/meetings-today.json)"
