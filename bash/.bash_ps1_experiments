@@ -1,0 +1,802 @@
+#!/usr/bin/env bash
+# PS1 Experiments — source and switch between 8 prompt variants.
+# Depends on: _shorten_pwd and __git_ps1 (already loaded from .bashrc)
+#
+# Usage:
+#   source ~/.dotfiles/bash/.bash_ps1_experiments
+#   switch_ps1       # list all variants
+#   switch_ps1 3     # apply V3: Powerline
+#   switch_ps1 0     # restore original _set_ps1
+
+# ── Git helper for variants that build PS1 directly (used by V3) ─────────────
+
+_ps1_git_branch() {
+    git rev-parse --git-dir >/dev/null 2>&1 || return
+    local branch flags="" red=$'\[\e[0;31m\]' reset=$'\[\e[0m\]'
+    branch=$(git symbolic-ref --short HEAD 2>/dev/null) ||
+        branch=$(git rev-parse --short HEAD 2>/dev/null) ||
+        return
+    git diff --quiet 2>/dev/null || flags+="*"
+    git diff --cached --quiet 2>/dev/null || flags+="+"
+    [ -n "$(git ls-files --others --exclude-standard 2>/dev/null)" ] && flags+="?"
+    git rev-parse --verify refs/stash >/dev/null 2>&1 && flags+="%"
+    [[ -n "$flags" ]] && printf '%s %s%s%s' "$branch" "$red" "$flags" "$reset" || printf '%s' "$branch"
+}
+
+_ps1_git_info() {
+    git rev-parse --git-dir >/dev/null 2>&1 || return
+    local branch flags=""
+    branch=$(git symbolic-ref --short HEAD 2>/dev/null) ||
+        branch=$(git rev-parse --short HEAD 2>/dev/null) ||
+        return
+    git diff --quiet 2>/dev/null || flags+="*"
+    git diff --cached --quiet 2>/dev/null || flags+="+"
+    [ -n "$(git ls-files --others --exclude-standard 2>/dev/null)" ] && flags+="?"
+    git rev-parse --verify refs/stash >/dev/null 2>&1 && flags+="%"
+    [[ -n "$flags" ]] && printf '%s (%s)' "$branch" "$flags" || printf '%s' "$branch"
+}
+
+# ── Session constants ─────────────────────────────────────────────────────────
+
+# Evaluated once at source time; blank on local sessions
+_PS1_SSH_HOST=""
+[[ -n "$SSH_CONNECTION" ]] && _PS1_SSH_HOST="@$(hostname -s)"
+
+# ── Command duration ───────────────────────────────────────────────────────────
+# DEBUG fires before every simple command. _ps1_timer_on prevents commands
+# inside PROMPT_COMMAND from resetting the timer — only the first DEBUG after
+# a new prompt (the user's actual command) captures the start time.
+# Each variant resets _ps1_timer_on="" as its very last statement.
+
+_ps1_timer_start=$SECONDS
+_ps1_timer_on=""
+
+_ps1_preexec() {
+    [[ -n "$_ps1_timer_on" ]] && return
+    _ps1_timer_start=$SECONDS
+    _ps1_timer_on=1
+}
+
+trap '_ps1_preexec' DEBUG
+
+_ps1_format_duration() {
+    local s=$1
+    if   (( s < 60   )); then printf '%ds'     "$s"
+    elif (( s < 3600 )); then printf '%dm %ds' $(( s / 60 )) $(( s % 60 ))
+    else                      printf '%dh %dm' $(( s / 3600 )) $(( (s % 3600) / 60 ))
+    fi
+}
+
+# ── V1: Minimal ───────────────────────────────────────────────────────────────
+# Line 1: user[@host] path + dim git
+# Line 2: [time] [dur] ❯
+
+_set_ps1_v1() {
+    local exit_status=$?
+    local elapsed=$(( SECONDS - _ps1_timer_start ))
+    local NC=$'\[\e[0m\]'
+    local cyan=$'\[\e[0;36m\]'
+    local dim=$'\[\e[2m\]'
+    local green=$'\[\e[0;32m\]'
+    local red=$'\[\e[0;31m\]'
+
+    local indicator
+    [ $exit_status -eq 0 ] && indicator="${green}❯" || indicator="${red}❯"
+
+    local dur=""
+    (( elapsed >= 1 )) && dur=" ${dim}$(_ps1_format_duration "$elapsed")${NC}"
+
+    local pre="${dim}\\u${_PS1_SSH_HOST}${NC} ${cyan}$(_shorten_pwd)${NC}"
+    local post="\n${dim}[\\A]${dur}${NC} ${indicator}${NC} "
+
+    if declare -F __git_ps1 >/dev/null 2>&1; then
+        __git_ps1 "$pre" "$post" " ${dim}%s${NC}"
+    else
+        PS1="${pre}${post}"
+    fi
+    _ps1_timer_on=""
+}
+
+# ── V2: Two-line Modern ───────────────────────────────────────────────────────
+# Line 1: ✓/✗ + bold blue path + dim git branch
+# Line 2: yellow ❯
+# Example:
+#   ✓ @lm/myproject main*
+#   ❯
+
+_set_ps1_v2() {
+    local exit_status=$?
+    local elapsed=$(( SECONDS - _ps1_timer_start ))
+    local NC=$'\[\e[0m\]'
+    local bold=$'\[\e[1m\]'
+    local dim=$'\[\e[2m\]'
+    local blue=$'\[\e[38;2;0;136;255m\]'
+    local yellow=$'\[\e[38;2;255;198;0m\]'
+    local green=$'\[\e[0;32m\]'
+    local red=$'\[\e[0;31m\]'
+
+    local status_icon
+    [ $exit_status -eq 0 ] && status_icon="${green}✓" || status_icon="${red}✗"
+
+    local dur=""
+    (( elapsed >= 1 )) && dur=" ${dim}$(_ps1_format_duration "$elapsed")${NC}"
+
+    local pre="${status_icon} ${dim}\\u${_PS1_SSH_HOST}${NC} ${bold}${blue}$(_shorten_pwd)${NC}"
+    local post="\n${dim}[\\A]${dur}${NC} ${yellow}❯${NC} "
+
+    if declare -F __git_ps1 >/dev/null 2>&1; then
+        __git_ps1 "$pre" "$post" " ${dim}%s${NC}"
+    else
+        PS1="${pre}${post}"
+    fi
+    _ps1_timer_on=""
+}
+
+# ── V3: Powerline ─────────────────────────────────────────────────────────────
+# Line 1: user ▶ path ▶ branch — filled arrow segments, 256-color backgrounds
+# Line 2: colored ❯
+# Uses _ps1_git_branch instead of __git_ps1 for correct segment transitions.
+
+_set_ps1_v3() {
+    local exit_status=$?
+    local elapsed=$(( SECONDS - _ps1_timer_start ))
+    local NC=$'\[\e[0m\]'
+    local ARROW=$''
+
+    local dim=$'\[\e[2m\]'
+    local s1_bg=$'\[\e[48;5;24m\]'  s1_fg=$'\[\e[38;5;195m\]'  # steel blue / pale cyan
+    local s2_bg=$'\[\e[48;5;17m\]'  s2_fg=$'\[\e[38;5;153m\]'  # navy / periwinkle
+    local s3_bg=$'\[\e[48;5;22m\]'  s3_fg=$'\[\e[38;5;156m\]'  # forest / mint
+
+    # Arrow colors: fg = leaving segment bg, bg = entering segment bg
+    local arr12="${NC}${s2_bg}"$'\[\e[38;5;24m\]'"${ARROW}"
+    local arr23="${NC}${s3_bg}"$'\[\e[38;5;17m\]'"${ARROW}"
+    local arr3_end="${NC}"$'\[\e[38;5;22m\]'"${ARROW}${NC}"
+    local arr2_end="${NC}"$'\[\e[38;5;17m\]'"${ARROW}${NC}"
+
+    local prompt_color
+    [ $exit_status -eq 0 ] && prompt_color=$'\[\e[32m\]' || prompt_color=$'\[\e[31m\]'
+
+    local dur=""
+    (( elapsed >= 1 )) && dur=" ${dim}$(_ps1_format_duration "$elapsed")${NC}"
+
+    local git_branch
+    git_branch="$(_ps1_git_branch)"
+
+    local user_seg=" \\u${_PS1_SSH_HOST} "
+    if [ -n "$git_branch" ]; then
+        PS1="${s1_bg}${s1_fg}${user_seg}${arr12}${s2_bg}${s2_fg} $(_shorten_pwd) ${arr23}${s3_bg}${s3_fg}  ${git_branch} ${arr3_end}\n${dim}[\\A]${dur}${NC} ${prompt_color}❯${NC} "
+    else
+        PS1="${s1_bg}${s1_fg}${user_seg}${arr12}${s2_bg}${s2_fg} $(_shorten_pwd) ${arr2_end}\n${dim}[\\A]${dur}${NC} ${prompt_color}❯${NC} "
+    fi
+    _ps1_timer_on=""
+}
+
+# ── V4: Nerd Font Heavy ───────────────────────────────────────────────────────
+# Line 1: ✓/✗ + folder icon + path + branch icon + git
+# Line 2: yellow ❯
+
+_set_ps1_v4() {
+    local exit_status=$?
+    local elapsed=$(( SECONDS - _ps1_timer_start ))
+    local NC=$'\[\e[0m\]'
+    local blue=$'\[\e[38;2;100;160;255m\]'
+    local purple=$'\[\e[38;2;158;127;255m\]'
+    local yellow=$'\[\e[38;2;255;198;0m\]'
+    local green=$'\[\e[0;32m\]'
+    local red=$'\[\e[0;31m\]'
+    local dim=$'\[\e[2m\]'
+    local FOLDER=$''
+    local BRANCH=$''
+
+    local status_icon
+    [ $exit_status -eq 0 ] && status_icon="${green}✓" || status_icon="${red}✗"
+
+    local dur=""
+    (( elapsed >= 1 )) && dur=" ${dim}$(_ps1_format_duration "$elapsed")${NC}"
+
+    local pre="${status_icon} ${purple}\\u${dim}${_PS1_SSH_HOST}${NC} ${blue}${FOLDER} $(_shorten_pwd)${NC}"
+    local post="\n${dim}[\\A]${dur}${NC} ${yellow}❯${NC} "
+
+    if declare -F __git_ps1 >/dev/null 2>&1; then
+        __git_ps1 "$pre" "$post" " ${purple}${BRANCH} %s${NC}"
+    else
+        PS1="${pre}${post}"
+    fi
+    _ps1_timer_on=""
+}
+
+# ── V5: Cobalt Match ──────────────────────────────────────────────────────────
+# True-color palette tuned to Cobalt Next — keeps user@host, two-line layout.
+# Example:
+#   ✓ user@host @lm/myproject [ main* ]
+#   ❯
+
+_set_ps1_v5() {
+    local exit_status=$?
+    local elapsed=$(( SECONDS - _ps1_timer_start ))
+    local NC=$'\[\e[0m\]'
+    local blue=$'\[\e[38;2;0;136;255m\]'
+    local yellow=$'\[\e[38;2;255;198;0m\]'
+    local green=$'\[\e[38;2;58;217;0m\]'
+    local red=$'\[\e[38;2;255;38;0m\]'
+    local muted=$'\[\e[38;2;80;120;160m\]'
+
+    local status_icon
+    [ $exit_status -eq 0 ] && status_icon="${green}✓" || status_icon="${red}✗"
+
+    local dur=""
+    (( elapsed >= 1 )) && dur=" ${muted}$(_ps1_format_duration "$elapsed")${NC}"
+
+    local pre="${status_icon} ${blue}\\u${muted}${_PS1_SSH_HOST}${muted}:${yellow}$(_shorten_pwd)${NC}"
+    local post="\n${muted}[\\A]${dur}${NC} ${blue}❯${NC} "
+
+    if declare -F __git_ps1 >/dev/null 2>&1; then
+        __git_ps1 "$pre" "$post" " ${muted}[ %s ]${NC}"
+    else
+        PS1="${pre}${post}"
+    fi
+    _ps1_timer_on=""
+}
+
+# ── V6: Catppuccin Macchiato ──────────────────────────────────────────────────
+# Matches tmux's Catppuccin Macchiato palette — mauve, peach, teal, sky.
+# Example:
+#   ✓ user@host @lm/myproject  main*
+#   ❯
+
+_set_ps1_v6() {
+    local exit_status=$?
+    local elapsed=$(( SECONDS - _ps1_timer_start ))
+    local NC=$'\[\e[0m\]'
+    local mauve=$'\[\e[38;2;198;160;246m\]'
+    local peach=$'\[\e[38;2;245;169;127m\]'
+    local teal=$'\[\e[38;2;139;213;202m\]'
+    local sky=$'\[\e[38;2;145;215;227m\]'
+    local green=$'\[\e[38;2;166;218;149m\]'
+    local red=$'\[\e[38;2;237;135;150m\]'
+    local subtext=$'\[\e[38;2;165;173;203m\]'
+    local BRANCH=$''
+
+    local status_icon
+    [ $exit_status -eq 0 ] && status_icon="${green}✓" || status_icon="${red}✗"
+
+    local dur=""
+    (( elapsed >= 1 )) && dur=" ${subtext}$(_ps1_format_duration "$elapsed")${NC}"
+
+    local pre="${status_icon} ${peach}\\u${subtext}${_PS1_SSH_HOST}${NC} ${teal}$(_shorten_pwd)${NC}"
+    local post="\n${subtext}[\\A]${dur}${NC} ${mauve}❯${NC} "
+
+    if declare -F __git_ps1 >/dev/null 2>&1; then
+        __git_ps1 "$pre" "$post" " ${subtext}${BRANCH} %s${NC}"
+    else
+        PS1="${pre}${post}"
+    fi
+    _ps1_timer_on=""
+}
+
+# ── V7: Time-aware ────────────────────────────────────────────────────────────
+# Line 1: [HH:MM] + status dot + path + git
+# Line 2: yellow ❯
+
+_set_ps1_v7() {
+    local exit_status=$?
+    local elapsed=$(( SECONDS - _ps1_timer_start ))
+    local NC=$'\[\e[0m\]'
+    local dim=$'\[\e[2m\]'
+    local cyan=$'\[\e[0;36m\]'
+    local yellow=$'\[\e[38;2;255;198;0m\]'
+    local green=$'\[\e[0;32m\]'
+    local red=$'\[\e[0;31m\]'
+    local BRANCH=$''
+
+    local status_color
+    [ $exit_status -eq 0 ] && status_color="${green}" || status_color="${red}"
+
+    local dur=""
+    (( elapsed >= 1 )) && dur=" ${dim}$(_ps1_format_duration "$elapsed")${NC}"
+
+    local pre="${status_color}●${NC} ${cyan}\\u${dim}${_PS1_SSH_HOST}${NC} ${cyan}$(_shorten_pwd)${NC}"
+    local post="\n${dim}[\\t]${dur}${NC} ${yellow}❯${NC} "
+
+    if declare -F __git_ps1 >/dev/null 2>&1; then
+        __git_ps1 "$pre" "$post" " ${dim}${BRANCH} %s${NC}"
+    else
+        PS1="${pre}${post}"
+    fi
+    _ps1_timer_on=""
+}
+
+# ── V8: Breadcrumb ────────────────────────────────────────────────────────────
+# Line 1: ~ ❯ dir ❯ subdir + git
+# Line 2: colored ❯
+
+_ps1_breadcrumb() {
+    _shorten_pwd | sed 's|/| ❯ |g'
+}
+
+_set_ps1_v8() {
+    local exit_status=$?
+    local elapsed=$(( SECONDS - _ps1_timer_start ))
+    local NC=$'\[\e[0m\]'
+    local dim=$'\[\e[2m\]'
+    local cyan=$'\[\e[0;36m\]'
+    local green=$'\[\e[0;32m\]'
+    local red=$'\[\e[0;31m\]'
+    local BRANCH=$''
+
+    local prompt_color
+    [ $exit_status -eq 0 ] && prompt_color="${green}" || prompt_color="${red}"
+
+    local dur=""
+    (( elapsed >= 1 )) && dur=" ${dim}$(_ps1_format_duration "$elapsed")${NC}"
+
+    local pre="${dim}\\u${_PS1_SSH_HOST}${NC} ${dim}$(_ps1_breadcrumb)${NC}"
+    local post="\n${dim}[\\A]${dur}${NC} ${prompt_color}❯${NC} "
+
+    if declare -F __git_ps1 >/dev/null 2>&1; then
+        __git_ps1 "$pre" "$post" " ${dim}${BRANCH} %s${NC}"
+    else
+        PS1="${pre}${post}"
+    fi
+    _ps1_timer_on=""
+}
+
+# ── V9: Nerd Font Catppuccin ──────────────────────────────────────────────────
+# V4 layout (folder + branch icons) repainted with Catppuccin Macchiato palette.
+# Peach user, teal path, mauve branch + ❯, subtext time/host, Catppuccin green/red.
+
+_set_ps1_v9() {
+    local exit_status=$?
+    local elapsed=$(( SECONDS - _ps1_timer_start ))
+    local NC=$'\[\e[0m\]'
+    local mauve=$'\[\e[38;2;198;160;246m\]'
+    local peach=$'\[\e[38;2;245;169;127m\]'
+    local teal=$'\[\e[38;2;139;213;202m\]'
+    local green=$'\[\e[38;2;166;218;149m\]'
+    local red=$'\[\e[38;2;237;135;150m\]'
+    local subtext=$'\[\e[38;2;165;173;203m\]'
+    local FOLDER=$''
+    local BRANCH=$''
+
+    local status_icon
+    [ $exit_status -eq 0 ] && status_icon="${green}✓" || status_icon="${red}✗"
+
+    local dur=""
+    (( elapsed >= 1 )) && dur=" ${subtext}$(_ps1_format_duration "$elapsed")${NC}"
+
+    local pre="${status_icon} ${peach}\\u${subtext}${_PS1_SSH_HOST}${NC} ${teal}${FOLDER} $(_shorten_pwd)${NC}"
+    local post="\n${subtext}[\\A]${dur}${NC} ${mauve}❯${NC} "
+
+    if declare -F __git_ps1 >/dev/null 2>&1; then
+        __git_ps1 "$pre" "$post" " ${mauve}${BRANCH} %s${NC}"
+    else
+        PS1="${pre}${post}"
+    fi
+    _ps1_timer_on=""
+}
+
+# ── V10: Nerd Font Tokyo Night Storm ─────────────────────────────────────────
+# V4 layout (folder + branch icons) with Tokyo Night Storm palette.
+# Orange user, blue path, purple branch + ❯, dim time/host, TN green/red.
+
+_set_ps1_v10() {
+    local exit_status=$?
+    local elapsed=$(( SECONDS - _ps1_timer_start ))
+    local NC=$'\[\e[0m\]'
+    local blue=$'\[\e[38;2;122;162;247m\]'
+    local purple=$'\[\e[38;2;187;154;247m\]'
+    local yellow=$'\[\e[38;2;224;175;104m\]'
+    local green=$'\[\e[38;2;158;206;106m\]'
+    local red=$'\[\e[38;2;247;118;142m\]'
+    local dim=$'\[\e[38;2;86;95;137m\]'
+    local FOLDER=$''
+    local BRANCH=$''
+
+    local status_icon
+    [ $exit_status -eq 0 ] && status_icon="${green}✓" || status_icon="${red}✗"
+
+    local dur=""
+    (( elapsed >= 1 )) && dur=" ${dim}$(_ps1_format_duration "$elapsed")${NC}"
+
+    local pre="${status_icon} ${purple}\\u${dim}${_PS1_SSH_HOST}${NC} ${blue}${FOLDER} $(_shorten_pwd)${NC}"
+    local post="\n${dim}[\\A]${dur}${NC} ${yellow}❯${NC} "
+
+    if declare -F __git_ps1 >/dev/null 2>&1; then
+        __git_ps1 "$pre" "$post" " ${purple}${BRANCH} %s${NC}"
+    else
+        PS1="${pre}${post}"
+    fi
+    _ps1_timer_on=""
+}
+
+# ── V11: Nerd Font + Bashrc Colors ───────────────────────────────────────────
+# V10 layout (folder + branch icons) with the ANSI color mapping from .bashrc:
+# green user+ok (COLOR_GREEN), bold-blue path (COLOR_LIGHT_BLUE), default git+prompt.
+
+_set_ps1_v11() {
+    local exit_status=$?
+    local elapsed=$(( SECONDS - _ps1_timer_start ))
+    local NC=$'\[\e[0m\]'
+    local green=$'\[\e[0;32m\]'
+    local red=$'\[\e[0;31m\]'
+    local yellow=$'\[\e[0;33m\]'
+    local blue=$'\[\e[1;34m\]'
+    local dim=$'\[\e[2m\]'
+    local FOLDER=$''
+    local BRANCH=$''
+
+    local status_icon
+    [ $exit_status -eq 0 ] && status_icon="${green}●" || status_icon="${red}●"
+
+    local dur=""
+    (( elapsed >= 1 )) && dur=" ${dim}$(_ps1_format_duration "$elapsed")${NC}"
+
+    local pre="${status_icon} ${green}\\u${dim}${_PS1_SSH_HOST}${NC} ${blue}${FOLDER} $(_shorten_pwd)${NC}"
+    local post="\n${dim}[\\A]${dur}${NC} ❯ "
+
+    local git_info
+    git_info="$(_ps1_git_info)"
+    [[ -n "$git_info" ]] && pre+=" ${yellow}${BRANCH} ${git_info}${NC}"
+    PS1="${pre}${post}"
+    _ps1_timer_on=""
+}
+
+# ── Workspace context helper ─────────────────────────────
+# Prints tab-separated: workspace_short <TAB> project <TAB> relpath
+# All empty (\t\tpath) when outside ~/workspace.
+# Uses git rev-parse --show-toplevel for worktree-aware relpath.
+_ps1_context() {
+    local pwd="$PWD"
+
+    if [[ "$pwd" != "$HOME/workspace/"* ]]; then
+        printf '\t\t%s' "${pwd/#$HOME/~}"
+        return
+    fi
+
+    local under="${pwd#$HOME/workspace/}"
+    local workspace="${under%%/*}"
+    local ws_short
+    case "$workspace" in
+        lmagalhaes) ws_short="lm" ;;
+        workyard)   ws_short="wy" ;;
+        *)          ws_short="$workspace" ;;
+    esac
+
+    if [[ "$under" != */* ]]; then
+        printf '%s\t\t' "$ws_short"
+        return
+    fi
+
+    local rest="${under#$workspace/}"
+    local project="${rest%%/*}"
+
+    if [[ "$rest" != */* ]]; then
+        printf '%s\t%s\t' "$ws_short" "$project"
+        return
+    fi
+
+    local relpath="" git_root
+    git_root=$(git rev-parse --show-toplevel 2>/dev/null)
+    if [[ -n "$git_root" && "$pwd" == "$git_root/"* ]]; then
+        relpath="${pwd#$git_root/}"
+    else
+        relpath="${rest#$project/}"
+    fi
+
+    printf '%s\t%s\t%s' "$ws_short" "$project" "$relpath"
+}
+
+# ── V12: Workspace B — wy ❯ project/relpath ────────────────────────
+# Workspace dim + ❯ separator, then project/relpath in bold blue. Falls back to
+# shortened path when outside ~/workspace.
+
+_set_ps1_v12() {
+    local exit_status=$?
+    local elapsed=$(( SECONDS - _ps1_timer_start ))
+    local NC=$'\[\e[0m\]'
+    local green=$'\[\e[0;32m\]'
+    local red=$'\[\e[0;31m\]'
+    local yellow=$'\[\e[0;33m\]'
+    local blue=$'\[\e[1;34m\]'
+    local dim=$'\[\e[2m\]'
+    local BRANCH=$''
+
+    local status_icon
+    [ $exit_status -eq 0 ] && status_icon="${green}●" || status_icon="${red}●"
+
+    local dur=""
+    (( elapsed >= 1 )) && dur=" ${dim}$(_ps1_format_duration "$elapsed")${NC}"
+
+    local ws proj rel
+    IFS=$'\t' read -r ws proj rel <<< "$(_ps1_context)"
+
+    local path_part
+    if [[ -n "$ws" && -n "$proj" ]]; then
+        local proj_rel="${proj}"
+        [[ -n "$rel" ]] && proj_rel+="/${rel}"
+        path_part="${dim}${ws} ❯${NC} ${blue}${proj_rel}${NC}"
+    elif [[ -n "$ws" ]]; then
+        path_part="${dim}${ws}${NC}"
+    else
+        path_part="${blue}${rel}${NC}"
+    fi
+
+    local pre="${status_icon} ${green}\\u${dim}${_PS1_SSH_HOST}${NC} ${path_part}"
+    local post="\n${dim}[\\A]${dur}${NC} ❯ "
+
+    local git_info
+    git_info="$(_ps1_git_info)"
+    [[ -n "$git_info" ]] && pre+=" ${yellow}${BRANCH} ${git_info}${NC}"
+    PS1="${pre}${post}"
+    _ps1_timer_on=""
+}
+
+# ── V13: Workspace C — wy   project   relpath ───────────────────
+# Three distinct colored elements: cyan workspace, bold-blue project, dim relpath.
+
+_set_ps1_v13() {
+    local exit_status=$?
+    local elapsed=$(( SECONDS - _ps1_timer_start ))
+    local NC=$'\[\e[0m\]'
+    local green=$'\[\e[0;32m\]'
+    local red=$'\[\e[0;31m\]'
+    local yellow=$'\[\e[0;33m\]'
+    local cyan=$'\[\e[0;36m\]'
+    local blue=$'\[\e[1;34m\]'
+    local dim=$'\[\e[2m\]'
+    local BRANCH=$''
+
+    local status_icon
+    [ $exit_status -eq 0 ] && status_icon="${green}●" || status_icon="${red}●"
+
+    local dur=""
+    (( elapsed >= 1 )) && dur=" ${dim}$(_ps1_format_duration "$elapsed")${NC}"
+
+    local ws proj rel
+    IFS=$'\t' read -r ws proj rel <<< "$(_ps1_context)"
+
+    local path_part
+    if [[ -n "$ws" ]]; then
+        path_part="${cyan}${ws}${NC}"
+        [[ -n "$proj" ]] && path_part+=" ${blue}${proj}${NC}"
+        [[ -n "$rel"  ]] && path_part+=" ${dim}${rel}${NC}"
+    else
+        path_part="${blue}${rel}${NC}"
+    fi
+
+    local pre="${status_icon} ${green}\\u${dim}${_PS1_SSH_HOST}${NC} ${path_part}"
+    local post="\n${dim}[\\A]${dur}${NC} ❯ "
+
+    local git_info
+    git_info="$(_ps1_git_info)"
+    [[ -n "$git_info" ]] && pre+=" ${yellow}${BRANCH} ${git_info}${NC}"
+    PS1="${pre}${post}"
+    _ps1_timer_on=""
+}
+
+
+# ── V14: Workspace B+C ───────────────────────────────────
+# B structure (❯ separator) with C colors: cyan ws, blue project, dim  relpath.
+
+_set_ps1_v14() {
+    local exit_status=$?
+    local elapsed=$(( SECONDS - _ps1_timer_start ))
+    local NC=$'\[\e[0m\]'
+    local green=$'\[\e[0;32m\]'
+    local red=$'\[\e[0;31m\]'
+    local yellow=$'\[\e[0;33m\]'
+    local cyan=$'\[\e[0;36m\]'
+    local blue=$'\[\e[1;34m\]'
+    local dim=$'\[\e[2m\]'
+    local white=$'\[\e[0;37m\]'
+    local orange=$'\[\e[38;2;255;158;100m\]'
+    local orange_dim=$'\[\e[38;2;255;179;128m\]'
+    local BRANCH=$''
+    local FOLDER=$''
+
+    local status_icon
+    [ $exit_status -eq 0 ] && status_icon="${green}●" || status_icon="${red}●"
+
+    local dur=""
+    (( elapsed >= 1 )) && dur=" ${dim}$(_ps1_format_duration "$elapsed")${NC}"
+
+    local ws proj rel
+    IFS=$'\t' read -r ws proj rel <<< "$(_ps1_context)"
+
+    local path_part
+    if [[ -n "$ws" && -n "$proj" ]]; then
+        path_part="${orange}${ws}${orange_dim} ➜ ${orange}${proj}${NC}"
+        if [[ -n "$rel" ]]; then
+            path_part+=" ${FOLDER} ${rel}"
+        else
+            path_part+=" ${FOLDER} /"
+        fi
+    elif [[ -n "$ws" ]]; then
+        path_part="${cyan}${ws}${NC}"
+    else
+        path_part="${blue}${rel}${NC}"
+    fi
+
+    local pre="${status_icon} ${green}\\u${dim}${_PS1_SSH_HOST}${NC} ${path_part}"
+    local post="\n${dim}[\\A]${dur}${NC} ❯ "
+
+    local git_info
+    git_info="$(_ps1_git_info)"
+    [[ -n "$git_info" ]] && pre+=" ${yellow}${BRANCH} ${git_info}${NC}"
+    PS1="${pre}${post}"
+    _ps1_timer_on=""
+}
+
+
+# ── V15: Workspace B+C (Powerline triangle separator) ────────────
+# Like V14 but uses Powerline  (no spaces) as ws/project separator.
+
+_set_ps1_v15() {
+    local exit_status=$?
+    local elapsed=$(( SECONDS - _ps1_timer_start ))
+    local NC=$'\[\e[0m\]'
+    local green=$'\[\e[0;32m\]'
+    local red=$'\[\e[0;31m\]'
+    local yellow=$'\[\e[0;33m\]'
+    local cyan=$'\[\e[0;36m\]'
+    local blue=$'\[\e[1;34m\]'
+    local dim=$'\[\e[2m\]'
+    local orange=$'\[\e[38;2;255;158;100m\]'
+    local orange_dim=$'\[\e[38;2;255;179;128m\]'
+    local BRANCH=$''
+    local FOLDER=$''
+    local ARROW=$'▶'
+
+    local status_icon
+    [ $exit_status -eq 0 ] && status_icon="${green}●" || status_icon="${red}●"
+
+    local dur=""
+    (( elapsed >= 1 )) && dur=" ${dim}$(_ps1_format_duration "$elapsed")${NC}"
+
+    local ws proj rel
+    IFS=$'\t' read -r ws proj rel <<< "$(_ps1_context)"
+
+    local path_part
+    if [[ -n "$ws" && -n "$proj" ]]; then
+        path_part="${orange}${ws}${orange_dim} ${ARROW} ${orange}${proj}${NC}"
+        if [[ -n "$rel" ]]; then
+            path_part+=" ${FOLDER} ${rel}"
+        else
+            path_part+=" ${FOLDER} /"
+        fi
+    elif [[ -n "$ws" ]]; then
+        path_part="${cyan}${ws}${NC}"
+    else
+        path_part="${blue}${rel}${NC}"
+    fi
+
+    local pre="${status_icon} ${green}\\u${dim}${_PS1_SSH_HOST}${NC} ${path_part}"
+    local post="\n${dim}[\\A]${dur}${NC} ❯ "
+
+    local git_info
+    git_info="$(_ps1_git_info)"
+    [[ -n "$git_info" ]] && pre+=" ${yellow}${BRANCH} ${git_info}${NC}"
+    PS1="${pre}${post}"
+    _ps1_timer_on=""
+}
+
+
+# ── V16: Workspace + Tokyo Night git status ───────────────────────────────────
+# V15 layout (orange ws ▶ project, blue relpath) with white branch and
+# per-symbol git status colors from Tokyo Night Storm:
+#   * unstaged=red  + staged=green  ? untracked=amber  % stash=cyan
+
+_set_ps1_v16() {
+    local exit_status=$?
+    local elapsed=$(( SECONDS - _ps1_timer_start ))
+    local NC=$'\[\e[0m\]'
+    local green=$'\[\e[0;32m\]'
+    local red=$'\[\e[0;31m\]'
+    local cyan=$'\[\e[0;36m\]'
+    local blue=$'\[\e[1;34m\]'
+    local white=$'\[\e[0;37m\]'
+    local dim=$'\[\e[2m\]'
+    local orange=$'\[\e[38;2;255;158;100m\]'
+    local orange_dim=$'\[\e[38;2;255;179;128m\]'
+    local git_unstaged=$'\[\e[38;2;247;118;142m\]'
+    local git_staged=$'\[\e[38;2;158;206;106m\]'
+    local git_untracked=$'\[\e[38;2;224;175;104m\]'
+    local git_stash=$'\[\e[38;2;115;218;202m\]'
+    local BRANCH=$''
+    local FOLDER=$''
+    local ARROW=$'▶'
+
+    local status_icon
+    [ $exit_status -eq 0 ] && status_icon="${green}●" || status_icon="${red}●"
+
+    local dur=""
+    (( elapsed >= 1 )) && dur=" ${dim}$(_ps1_format_duration "$elapsed")${NC}"
+
+    local ws proj rel
+    IFS=$'\t' read -r ws proj rel <<< "$(_ps1_context)"
+
+    local path_part
+    if [[ -n "$ws" && -n "$proj" ]]; then
+        path_part="${orange}${ws}${orange_dim} ${ARROW} ${orange}${proj}${NC}"
+        if [[ -n "$rel" ]]; then
+            path_part+=" ${blue}${FOLDER} ${rel}${NC}"
+        else
+            path_part+=" ${blue}${FOLDER} /${NC}"
+        fi
+    elif [[ -n "$ws" ]]; then
+        path_part="${orange}${ws}${NC}"
+    else
+        path_part="${blue}${FOLDER} ${rel}${NC}"
+    fi
+
+    local pre="${status_icon} ${green}\\u${dim}${_PS1_SSH_HOST}${NC} ${path_part}"
+    local post="\n${dim}[\\A]${dur}${NC} ❯ "
+
+    if git rev-parse --git-dir >/dev/null 2>&1; then
+        local branch flags_str=""
+        branch=$(git symbolic-ref --short HEAD 2>/dev/null) ||
+            branch=$(git rev-parse --short HEAD 2>/dev/null)
+        if [[ -n "$branch" ]]; then
+            git diff --quiet 2>/dev/null           || flags_str+="${git_unstaged}*${NC}"
+            git diff --cached --quiet 2>/dev/null  || flags_str+="${git_staged}+${NC}"
+            [ -n "$(git ls-files --others --exclude-standard 2>/dev/null)" ] \
+                                                   && flags_str+="${git_untracked}?${NC}"
+            git rev-parse --verify refs/stash >/dev/null 2>&1 \
+                                                   && flags_str+="${git_stash}%${NC}"
+            local git_str="${white}${BRANCH} ${branch}${NC}"
+            [[ -n "$flags_str" ]] && git_str+=" ${white}(${NC}${flags_str}${white})${NC}"
+            pre+=" ${git_str}"
+        fi
+    fi
+
+    PS1="${pre}${post}"
+    _ps1_timer_on=""
+}
+
+# ── Switcher ──────────────────────────────────────────────────────────────────
+
+switch_ps1() {
+    local n="${1:-help}"
+    case "$n" in
+        0) PROMPT_COMMAND=(_set_ps1);    printf 'PS1 → original\n' ;;
+        1) PROMPT_COMMAND=(_set_ps1_v1); printf 'PS1 → V1: Minimal\n' ;;
+        2) PROMPT_COMMAND=(_set_ps1_v2); printf 'PS1 → V2: Two-line Modern\n' ;;
+        3) PROMPT_COMMAND=(_set_ps1_v3); printf 'PS1 → V3: Powerline\n' ;;
+        4) PROMPT_COMMAND=(_set_ps1_v4); printf 'PS1 → V4: Nerd Font Heavy\n' ;;
+        5) PROMPT_COMMAND=(_set_ps1_v5); printf 'PS1 → V5: Cobalt Match\n' ;;
+        6) PROMPT_COMMAND=(_set_ps1_v6); printf 'PS1 → V6: Catppuccin Macchiato\n' ;;
+        7) PROMPT_COMMAND=(_set_ps1_v7); printf 'PS1 → V7: Time-aware\n' ;;
+        8) PROMPT_COMMAND=(_set_ps1_v8); printf 'PS1 → V8: Breadcrumb\n' ;;
+        9)  PROMPT_COMMAND=(_set_ps1_v9);  printf 'PS1 → V9: Nerd Font Catppuccin\n' ;;
+        10) PROMPT_COMMAND=(_set_ps1_v10); printf 'PS1 → V10: Nerd Font Tokyo Night\n' ;;
+        11) PROMPT_COMMAND=(_set_ps1_v11); printf 'PS1 → V11: Nerd Font + Bashrc Colors\n' ;;
+        12) PROMPT_COMMAND=(_set_ps1_v12); printf 'PS1 → V12: Workspace B\n' ;;
+        13) PROMPT_COMMAND=(_set_ps1_v13); printf 'PS1 → V13: Workspace C\n' ;;
+        14) PROMPT_COMMAND=(_set_ps1_v14); printf 'PS1 → V14: Workspace B+C\n' ;;
+        15) PROMPT_COMMAND=(_set_ps1_v15); printf 'PS1 → V15: Workspace B+C (triangle)\n' ;;
+        16) PROMPT_COMMAND=(_set_ps1_v16); printf 'PS1 → V16: Workspace + TN git status\n' ;;
+        *)
+            printf 'switch_ps1 [0-16]\n'
+            printf '  0  Restore original\n'
+            printf '  1  Minimal          — path + dim git + ❯\n'
+            printf '  2  Two-line Modern  — status + bold path, ❯ on line 2\n'
+            printf '  3  Powerline        — filled ▶ segments (256-color bg)\n'
+            printf '  4  Nerd Font Heavy  —  dir,  branch icons\n'
+            printf '  5  Cobalt Match     — true-color tuned to Cobalt Next\n'
+            printf '  6  Catppuccin       — matches tmux palette\n'
+            printf '  7  Time-aware       — [HH:MM] ● path git ❯\n'
+            printf '  8  Breadcrumb       — ~ ❯ dir ❯ subdir git ❯\n'
+            printf '  9  Nerd Font Catppuccin — V4 icons + Catppuccin Macchiato palette\n'
+            printf ' 10  Nerd Font Tokyo Night — V4 icons + Tokyo Night Storm palette\n'
+            printf ' 11  Nerd Font + Bashrc    — V10 layout, ANSI colors from .bashrc\n'
+            printf ' 12  Workspace B           — wy ❯ project/relpath + yellow git\n'
+            printf ' 13  Workspace C           — wy  project  relpath + yellow git\n'
+            printf ' 14  Workspace B+C         — cyan wy > blue project dim  relpath\n'
+            printf ' 15  Workspace B+C (tri)   — orange wy triangle project dim  relpath\n'
+            printf ' 16  Workspace TN          — V15 + blue relpath, white branch, TN git colors\n'
+            ;;
+    esac
+}
+
+printf 'PS1 experiments loaded. Run: switch_ps1\n'

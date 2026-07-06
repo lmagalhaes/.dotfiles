@@ -1,0 +1,1351 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PS1 Variants — Preview</title>
+<style>
+@font-face {
+  font-family: 'JetBrainsMono Nerd Font';
+  src: url('/Library/Fonts/JetBrainsMonoNerdFont-Regular.ttf') format('truetype');
+  font-weight: 400;
+  font-style: normal;
+}
+@font-face {
+  font-family: 'JetBrainsMono Nerd Font';
+  src: url('/Library/Fonts/JetBrainsMonoNerdFont-Bold.ttf') format('truetype');
+  font-weight: 700;
+  font-style: normal;
+}
+
+:root {
+  /* ── Page chrome (never changes with color palette) ── */
+  --bg-page:  #0b1825;
+  --bg-card:  #0f2131;
+  --text:         #c8d8e8;
+  --dim:          #4e6e88;
+  --border:       #1e3a52;
+
+  /* ── Static UI colors (table ✓/✗, links) ── */
+  --ui-green: #3ad900;
+  --ui-red:   #ff3b48;
+  --blue:     #0088ff;
+  --cyan:     #80fcff;
+  --white:    #ffffff;
+
+  /* ── PS1 semantic roles — default: Bashrc (TN Storm ANSI) ── */
+  --ps1-ok:     #9ece6a;
+  --ps1-err:    #f7768e;
+  --ps1-user:   #9ece6a;
+  --ps1-host:   #7dcfff;
+  --ps1-path:   #7aa2f7;
+  --ps1-git:    #c0caf5;
+  --ps1-prompt: #c0caf5;
+  --ps1-time:   #4e5575;
+
+  /* ── Powerline segment colors ── */
+  --pl-s1-bg: #3d59a1;
+  --pl-s1-fg: #c0caf5;
+  --pl-s2-bg: #1e2030;
+  --pl-s2-fg: #7aa2f7;
+  --pl-s3-bg: #1a3a1a;
+  --pl-s3-fg: #9ece6a;
+
+  /* ── Terminal text (change with theme; page chrome never changes) ── */
+  --term-text: #c0caf5;
+  --term-dim:  #4e5575;
+
+  /* ── Terminal background — default: TN Storm ── */
+  --bg-terminal:  #24283b;
+  --bg-titlebar:  #1f2335;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  background: var(--bg-page);
+  color: var(--text);
+  font-family: 'JetBrainsMono Nerd Font', 'JetBrains Mono', 'Cascadia Code', 'Fira Code', monospace;
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+a { color: inherit; }
+
+.page {
+  max-width: 1300px;
+  margin: 0 auto;
+  padding: 44px 28px 64px;
+}
+
+/* ── Header ──────────────────────────────────────────────────────────────── */
+header { margin-top: 40px; margin-bottom: 20px; }
+header h1 { font-size: 26px; font-weight: 600; color: var(--white); margin-bottom: 6px; }
+header p  { color: var(--dim); font-size: 13px; }
+header .note {
+  margin-top: 10px;
+  font-size: 12px;
+  color: var(--dim);
+  padding: 8px 12px;
+  border-left: 3px solid var(--blue);
+  background: var(--bg-card);
+}
+
+/* ── Quick start ─────────────────────────────────────────────────────────── */
+.quickstart {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 20px 24px;
+  margin-bottom: 28px;
+}
+.quickstart h2 {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: var(--dim);
+  margin-bottom: 14px;
+}
+.quickstart .line { margin: 5px 0; }
+.quickstart .cmt  { color: var(--dim); }
+.quickstart .cmd  { color: var(--cyan); }
+
+/* ── Theme switcher ──────────────────────────────────────────────────────── */
+.color-switcher {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-bottom: 24px;
+  padding: 14px 18px;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+}
+.color-switcher-label {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--dim);
+  margin-right: 4px;
+  flex-shrink: 0;
+}
+.color-btn {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font-family: inherit;
+  font-size: 12px;
+  color: var(--dim);
+  background: none;
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  padding: 5px 12px 5px 8px;
+  cursor: pointer;
+  transition: color .15s, border-color .15s;
+}
+.color-btn:hover { color: var(--text); border-color: var(--blue); }
+.color-btn.active { color: var(--text); border-color: var(--blue); }
+.color-swatch {
+  width: 12px;
+  height: 12px;
+  border-radius: 3px;
+  border: 1px solid rgba(255,255,255,0.12);
+  flex-shrink: 0;
+}
+
+/* ── Nav ─────────────────────────────────────────────────────────────────── */
+nav {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  margin-bottom: 32px;
+}
+nav a {
+  text-decoration: none;
+  font-size: 12px;
+  color: var(--dim);
+  padding: 4px 12px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  transition: color .15s, border-color .15s;
+}
+nav a:hover { color: var(--text); border-color: var(--blue); }
+
+/* ── Grid ────────────────────────────────────────────────────────────────── */
+.grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 40px;
+}
+
+/* ── Variant label ───────────────────────────────────────────────────────── */
+.variant-label {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin-bottom: 10px;
+}
+.variant-num {
+  font-size: 12px;
+  font-weight: 700;
+  color: #0b1825;
+  background: var(--blue);
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+.variant-name {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--white);
+}
+.variant-tag {
+  margin-left: auto;
+  font-size: 11px;
+  color: var(--dim);
+}
+
+/* ── Card ────────────────────────────────────────────────────────────────── */
+.card {
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+.titlebar {
+  background: var(--bg-titlebar);
+  padding: 10px 16px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+}
+.dots { display: flex; gap: 6px; }
+.dot  { width: 11px; height: 11px; border-radius: 50%; }
+.dot-r { background: #ff5f57; }
+.dot-y { background: #ffbd2e; }
+.dot-g { background: #28c840; }
+.titlebar-title { font-size: 12px; color: var(--term-dim); flex: 1; text-align: center; }
+
+/* ── Terminal body ───────────────────────────────────────────────────────── */
+.term {
+  background: var(--bg-terminal);
+  padding: 14px 18px 18px;
+  font-size: 13px;
+  line-height: 2;
+  overflow-x: auto;
+  white-space: nowrap;
+  flex: 1;
+}
+.pline { display: block; }
+.cmd   { color: var(--term-text); }
+.out   { color: var(--term-dim); display: block; line-height: 1.8; }
+
+.cursor {
+  display: inline-block;
+  width: 7px; height: 14px;
+  background: var(--term-text);
+  vertical-align: text-bottom;
+  /* animation: blink 1.1s step-end infinite; */
+}
+@keyframes blink { 50% { opacity: 0; } }
+
+/* ── Card meta ───────────────────────────────────────────────────────────── */
+.meta {
+  background: var(--bg-card);
+  border-top: 1px solid var(--border);
+  padding: 14px 18px;
+  flex-shrink: 0;
+}
+.meta p { font-size: 12px; color: var(--dim); line-height: 1.6; margin-bottom: 10px; }
+.meta code {
+  font-family: inherit;
+  font-size: 12px;
+  color: var(--cyan);
+  background: var(--bg-terminal);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 4px 12px;
+  display: inline-block;
+}
+
+/* ── PS1 semantic color classes ──────────────────────────────────────────── */
+.ps1-ok     { color: var(--ps1-ok); }
+.ps1-err    { color: var(--ps1-err); }
+.ps1-user   { color: var(--ps1-user); }
+.ps1-host   { color: var(--ps1-host); }
+.ps1-path   { color: var(--ps1-path); }
+.ps1-git    { color: var(--ps1-git); }
+.ps1-prompt { color: var(--ps1-prompt); }
+.ps1-time   { color: var(--ps1-time); }
+
+/* ── Static helpers (table, UI only) ─────────────────────────────────────── */
+.fg-dim    { color: var(--dim); }
+.bold      { font-weight: 700; }
+.term-text { color: var(--term-text); }
+
+/* ── Powerline segments ──────────────────────────────────────────────────── */
+.seg { padding: 1px 0; display: inline; vertical-align: middle; }
+.s1  { background: var(--pl-s1-bg); color: var(--pl-s1-fg); }
+.s2  { background: var(--pl-s2-bg); color: var(--pl-s2-fg); }
+.s3  { background: var(--pl-s3-bg); color: var(--pl-s3-fg); }
+.arr { display: inline; vertical-align: middle; }
+.a12 { background: var(--pl-s2-bg); color: var(--pl-s1-bg); }
+.a23 { background: var(--pl-s3-bg); color: var(--pl-s2-bg); }
+.a3e { color: var(--pl-s3-bg); }
+.a2e { color: var(--pl-s2-bg); }
+
+/* ── Footer ──────────────────────────────────────────────────────────────── */
+footer {
+  margin-top: 52px;
+  padding-top: 24px;
+  border-top: 1px solid var(--border);
+  color: var(--dim);
+  font-size: 12px;
+  text-align: center;
+}
+</style>
+</head>
+<body>
+<div class="page">
+
+  <!-- ── Theme switcher ───────────────────────────────────────────────────── -->
+  <div class="color-switcher">
+    <span class="color-switcher-label">Colors</span>
+    <button class="color-btn active" data-color="bashrc">
+      <span class="color-swatch" style="background:#24283b;"></span>Bashrc
+    </button>
+    <button class="color-btn" data-color="cobalt">
+      <span class="color-swatch" style="background:#193549;"></span>Cobalt Next
+    </button>
+    <button class="color-btn" data-color="tn-storm">
+      <span class="color-swatch" style="background:#24283b;"></span>TN Storm
+    </button>
+    <button class="color-btn" data-color="tn-night">
+      <span class="color-swatch" style="background:#1a1b26;"></span>TN Night
+    </button>
+    <button class="color-btn" data-color="tn-moon">
+      <span class="color-swatch" style="background:#222436;"></span>TN Moon
+    </button>
+    <button class="color-btn" data-color="cat-macchiato">
+      <span class="color-swatch" style="background:#24273a;"></span>Cat Macchiato
+    </button>
+    <button class="color-btn" data-color="cat-mocha">
+      <span class="color-swatch" style="background:#1e1e2e;"></span>Cat Mocha
+    </button>
+  </div>
+
+  <!-- ── Navigation ─────────────────────────────────────────────────────── -->
+  <nav>
+    <a href="#v0">Original (bashrc)</a>
+    <a href="#v2">Two-line Modern</a>
+    <a href="#v3">Powerline</a>
+    <a href="#v4">Nerd Font Heavy</a>
+    <a href="#v5">Cobalt Match</a>
+    <a href="#v6">Catppuccin</a>
+    <a href="#v10">Nerd Font Tokyo Night</a>
+    <a href="#v11">Nerd Font + Bashrc</a>
+    <a href="#v12">Workspace B</a>
+    <a href="#v13">Workspace C</a>
+    <a href="#v14">Workspace B+C</a>
+    <a href="#v15">Workspace B+C (triangle)</a>
+  </nav>
+
+  <!-- ── Grid ───────────────────────────────────────────────────────────── -->
+  <div class="grid">
+
+    <!-- V0: Original bashrc -->
+    <div class="variant-label">
+      <span class="variant-num">0</span>
+      <span class="variant-name">Original (bashrc)</span>
+      <span class="variant-tag">user@host:path · [ git ] · $ prompt · no icons · no time</span>
+    </div>
+    <div class="card" id="v0">
+      <div class="titlebar">
+        <div class="dots"><span class="dot dot-r"></span><span class="dot dot-y"></span><span class="dot dot-g"></span></div>
+        <div class="titlebar-title">bash — @wy/awesome-project</div>
+      </div>
+      <div class="term">
+        <span class="pline">
+          <span class="ps1-ok">✓</span>
+          <span class="ps1-user"> leandro@</span><span class="ps1-host">macbook:</span><span class="bold ps1-path">@wy/awesome-project</span>
+          <span class="ps1-git"> [ main* ]</span>
+        </span>
+        <span class="pline">
+          <span class="cmd">$ ls</span>
+        </span>
+        <span class="out">README.md  src/  tests/  package.json</span>
+        <span class="pline">
+          <span class="ps1-ok">✓</span>
+          <span class="ps1-user"> leandro@</span><span class="ps1-host">macbook:</span><span class="bold ps1-path">@wy/awesome-project</span>
+          <span class="ps1-git"> [ main* ]</span>
+        </span>
+        <span class="pline">
+          <span class="cmd">$</span>
+          <span class="cursor"></span>
+        </span>
+      </div>
+      <div class="meta">
+        <p>Current <code style="color:var(--cyan);background:none;border:none;padding:0">~/.bashrc</code> prompt.
+        Status + user@host:path + git on line 1, plain <code style="color:var(--cyan);background:none;border:none;padding:0">$</code> on line 2.
+        No Nerd Font icons, no time, no duration.</p>
+        <code>switch_ps1 0</code>
+      </div>
+    </div>
+
+    <!-- V2: Two-line Modern -->
+    <div class="variant-label">
+      <span class="variant-num">2</span>
+      <span class="variant-name">Two-line Modern</span>
+      <span class="variant-tag">status icon · bold path · prompt ❯</span>
+    </div>
+    <div class="card" id="v2">
+      <div class="titlebar">
+        <div class="dots"><span class="dot dot-r"></span><span class="dot dot-y"></span><span class="dot dot-g"></span></div>
+        <div class="titlebar-title">bash — @wy/awesome-project</div>
+      </div>
+      <div class="term">
+        <span class="pline">
+          <span class="ps1-ok">✓</span>
+          <span class="bold ps1-path"> @wy/awesome-project</span>
+          <span class="fg-dim"> main*</span>
+        </span>
+        <span class="pline">
+          <span class="ps1-time">[14:32]</span> <span class="ps1-prompt">❯</span>
+          <span class="cmd"> ls</span>
+        </span>
+        <span class="out">README.md  src/  tests/  package.json</span>
+        <span class="pline">
+          <span class="ps1-ok">✓</span>
+          <span class="bold ps1-path"> @wy/awesome-project</span>
+          <span class="fg-dim"> main*</span>
+        </span>
+        <span class="pline">
+          <span class="ps1-time">[14:33]</span> <span class="ps1-prompt">❯</span>
+          <span class="cursor"></span>
+        </span>
+      </div>
+      <div class="meta">
+        <p>Two lines: status + bold path + dim git on line 1, prompt ❯ on line 2.
+        More breathing room — path never competes with the cursor.</p>
+        <code>switch_ps1 2</code>
+      </div>
+    </div>
+
+    <!-- V3: Powerline -->
+    <div class="variant-label">
+      <span class="variant-num">3</span>
+      <span class="variant-name">Powerline</span>
+      <span class="variant-tag">filled arrow segments · Nerd Font</span>
+    </div>
+    <div class="card" id="v3">
+      <div class="titlebar">
+        <div class="dots"><span class="dot dot-r"></span><span class="dot dot-y"></span><span class="dot dot-g"></span></div>
+        <div class="titlebar-title">bash — @wy/awesome-project</div>
+      </div>
+      <div class="term">
+        <span class="pline">
+          <span class="seg s1"> leandro </span><span class="arr a12">&#xE0B0;</span><span class="seg s2"> @wy/awesome-project </span><span class="arr a23">&#xE0B0;</span><span class="seg s3">  main* </span><span class="arr a3e">&#xE0B0;</span>
+        </span>
+        <span class="pline">
+          <span class="ps1-time">[14:32]</span> <span class="ps1-prompt">❯</span>
+          <span class="cmd"> ls</span>
+        </span>
+        <span class="out">README.md  src/  tests/  package.json</span>
+        <span class="pline">
+          <span class="seg s1"> leandro </span><span class="arr a12">&#xE0B0;</span><span class="seg s2"> @wy/awesome-project </span><span class="arr a23">&#xE0B0;</span><span class="seg s3">  main* </span><span class="arr a3e">&#xE0B0;</span>
+        </span>
+        <span class="pline">
+          <span class="ps1-time">[14:33]</span> <span class="ps1-prompt">❯</span>
+          <span class="cursor"></span>
+        </span>
+        <span class="pline" style="margin-top:8px;font-size:11px;color:var(--dim);">
+          (outside a git repo — no branch segment)
+        </span>
+        <span class="pline">
+          <span class="seg s1"> leandro </span><span class="arr a12">&#xE0B0;</span><span class="seg s2"> ~ </span><span class="arr a2e">&#xE0B0;</span>
+        </span>
+        <span class="pline">
+          <span class="ps1-time">[14:33]</span> <span class="ps1-prompt">❯</span>
+          <span class="cursor"></span>
+        </span>
+      </div>
+      <div class="meta">
+        <p>Filled-arrow segments: user ▶ path ▶ branch ▶ prompt.
+        Branch segment only appears inside git repos. Segment colors follow the selected theme.</p>
+        <code>switch_ps1 3</code>
+      </div>
+    </div>
+
+    <!-- V4: Nerd Font Heavy -->
+    <div class="variant-label">
+      <span class="variant-num">4</span>
+      <span class="variant-name">Nerd Font Heavy</span>
+      <span class="variant-tag">&#xF07B; folder · &#xE0A0; branch · no user@host</span>
+    </div>
+    <div class="card" id="v4">
+      <div class="titlebar">
+        <div class="dots"><span class="dot dot-r"></span><span class="dot dot-y"></span><span class="dot dot-g"></span></div>
+        <div class="titlebar-title">bash — @wy/awesome-project</div>
+      </div>
+      <div class="term">
+        <span class="pline">
+          <span class="ps1-ok">✓</span>
+          <span class="ps1-path"> &#xF07B; @wy/awesome-project</span>
+          <span class="ps1-git"> &#xE0A0; main*</span>
+        </span>
+        <span class="pline">
+          <span class="ps1-time">[14:32]</span> <span class="ps1-prompt">❯</span>
+          <span class="cmd"> ls</span>
+        </span>
+        <span class="out">README.md  src/  tests/  package.json</span>
+        <span class="pline">
+          <span class="ps1-ok">✓</span>
+          <span class="ps1-path"> &#xF07B; @wy/awesome-project</span>
+          <span class="ps1-git"> &#xE0A0; main*</span>
+        </span>
+        <span class="pline">
+          <span class="ps1-time">[14:33]</span> <span class="ps1-prompt">❯</span>
+          <span class="cursor"></span>
+        </span>
+      </div>
+      <div class="meta">
+        <p>Icon-rich, no user@host clutter. Folder &#xF07B; for path, branch &#xE0A0; for git.
+        All prompt colors follow the selected theme.</p>
+        <code>switch_ps1 4</code>
+      </div>
+    </div>
+
+    <!-- V5: Cobalt Match -->
+    <div class="variant-label">
+      <span class="variant-num">5</span>
+      <span class="variant-name">Cobalt Match</span>
+      <span class="variant-tag">user@host · [ git ] · 2 lines</span>
+    </div>
+    <div class="card" id="v5">
+      <div class="titlebar">
+        <div class="dots"><span class="dot dot-r"></span><span class="dot dot-y"></span><span class="dot dot-g"></span></div>
+        <div class="titlebar-title">bash — @wy/awesome-project</div>
+      </div>
+      <div class="term">
+        <span class="pline">
+          <span class="ps1-ok"> ✓</span>
+          <span class="ps1-user"> leandro</span><span class="ps1-host">@macbook:</span><span class="ps1-path">@wy/awesome-project</span>
+          <span class="ps1-git"> [ main* ]</span>
+        </span>
+        <span class="pline">
+          <span class="ps1-time">[14:32]</span> <span class="ps1-prompt">❯</span>
+          <span class="cmd"> ls</span>
+        </span>
+        <span class="out">README.md  src/  tests/  package.json</span>
+        <span class="pline">
+          <span class="ps1-ok"> ✓</span>
+          <span class="ps1-user"> leandro</span><span class="ps1-host">@macbook:</span><span class="ps1-path">@wy/awesome-project</span>
+          <span class="ps1-git"> [ main* ]</span>
+        </span>
+        <span class="pline">
+          <span class="ps1-time">[14:33]</span> <span class="ps1-prompt">❯</span>
+          <span class="cursor"></span>
+        </span>
+      </div>
+      <div class="meta">
+        <p>Full user@host for context. Two-line layout. Git wrapped in brackets.
+        All colors follow the selected theme.</p>
+        <code>switch_ps1 5</code>
+      </div>
+    </div>
+
+    <!-- V6: Catppuccin Macchiato -->
+    <div class="variant-label">
+      <span class="variant-num">6</span>
+      <span class="variant-name">Catppuccin</span>
+      <span class="variant-tag">user · host · path · &#xE0A0; branch · 2 lines</span>
+    </div>
+    <div class="card" id="v6">
+      <div class="titlebar">
+        <div class="dots"><span class="dot dot-r"></span><span class="dot dot-y"></span><span class="dot dot-g"></span></div>
+        <div class="titlebar-title">bash — @wy/awesome-project</div>
+      </div>
+      <div class="term">
+        <span class="pline">
+          <span class="ps1-ok"> ✓</span>
+          <span class="ps1-user"> leandro</span><span class="ps1-host">@macbook</span>
+          <span class="ps1-path"> @wy/awesome-project</span>
+          <span class="ps1-git"> &#xE0A0; main*</span>
+        </span>
+        <span class="pline">
+          <span class="ps1-time">[14:32]</span> <span class="ps1-prompt">❯</span>
+          <span class="cmd"> ls</span>
+        </span>
+        <span class="out">README.md  src/  tests/  package.json</span>
+        <span class="pline">
+          <span class="ps1-ok"> ✓</span>
+          <span class="ps1-user"> leandro</span><span class="ps1-host">@macbook</span>
+          <span class="ps1-path"> @wy/awesome-project</span>
+          <span class="ps1-git"> &#xE0A0; main*</span>
+        </span>
+        <span class="pline">
+          <span class="ps1-time">[14:33]</span> <span class="ps1-prompt">❯</span>
+          <span class="cursor"></span>
+        </span>
+      </div>
+      <div class="meta">
+        <p>Full user@host, branch icon. Originally tuned to Catppuccin Macchiato — try the theme switcher
+        to see it in any palette.</p>
+        <code>switch_ps1 6</code>
+      </div>
+    </div>
+
+    <!-- V10: Nerd Font Tokyo Night Storm -->
+    <div class="variant-label">
+      <span class="variant-num">10</span>
+      <span class="variant-name">Nerd Font Tokyo Night</span>
+      <span class="variant-tag">&#xF07B; folder · &#xE0A0; branch · user · V4 color logic</span>
+    </div>
+    <div class="card" id="v10">
+      <div class="titlebar">
+        <div class="dots"><span class="dot dot-r"></span><span class="dot dot-y"></span><span class="dot dot-g"></span></div>
+        <div class="titlebar-title">bash — @wy/awesome-project</div>
+      </div>
+      <div class="term">
+        <span class="pline">
+          <span class="ps1-ok">✓</span>
+          <span class="ps1-user"> leandro</span>
+          <span class="ps1-path"> &#xF07B; @wy/awesome-project</span>
+          <span class="ps1-git"> &#xE0A0; main*</span>
+        </span>
+        <span class="pline">
+          <span class="ps1-time">[14:32]</span> <span class="ps1-prompt">❯</span>
+          <span class="cmd"> ls</span>
+        </span>
+        <span class="out">README.md  src/  tests/  package.json</span>
+        <span class="pline">
+          <span class="ps1-ok">✓</span>
+          <span class="ps1-user"> leandro</span>
+          <span class="ps1-path"> &#xF07B; @wy/awesome-project</span>
+          <span class="ps1-git"> &#xE0A0; main*</span>
+        </span>
+        <span class="pline">
+          <span class="ps1-time">[14:32]</span>
+          <span class="ps1-time"> 4s</span>
+          <span class="ps1-prompt"> ❯</span>
+          <span class="cmd"> git push</span>
+        </span>
+        <span class="out">Enumerating objects: 3, done.</span>
+        <span class="pline">
+          <span class="ps1-err">✗</span>
+          <span class="ps1-user"> leandro</span>
+          <span class="ps1-path"> &#xF07B; @wy/awesome-project</span>
+          <span class="ps1-git"> &#xE0A0; main*</span>
+        </span>
+        <span class="pline">
+          <span class="ps1-time">[14:33]</span> <span class="ps1-prompt">❯</span>
+          <span class="cursor"></span>
+        </span>
+      </div>
+      <div class="meta">
+        <p>V4 color logic (user=git color, path separate, prompt as contrast) on Nerd Font icons.
+        Originally tuned to Tokyo Night Storm — try the switcher to compare palettes.</p>
+        <code>switch_ps1 10</code>
+      </div>
+    </div>
+
+    <!-- V11: Nerd Font + Bashrc Colors -->
+    <div class="variant-label">
+      <span class="variant-num">11</span>
+      <span class="variant-name">Nerd Font + Bashrc</span>
+      <span class="variant-tag">&#xF07B; folder · &#xE0A0; branch · ● status · yellow git · ANSI colors</span>
+    </div>
+    <div class="card" id="v11">
+      <div class="titlebar">
+        <div class="dots"><span class="dot dot-r"></span><span class="dot dot-y"></span><span class="dot dot-g"></span></div>
+        <div class="titlebar-title">bash — @wy/awesome-project</div>
+      </div>
+      <div class="term">
+        <span class="pline">
+          <span class="ps1-ok">●</span>
+          <span class="ps1-user"> leandro</span>
+          <span class="ps1-path"> &#xF07B; @wy/awesome-project</span>
+          <span style="color:#e0af68"> &#xE0A0; main*</span>
+        </span>
+        <span class="pline">
+          <span class="ps1-time">[14:32]</span> <span class="term-text">❯</span>
+          <span class="cmd"> ls</span>
+        </span>
+        <span class="out">README.md  src/  tests/  package.json</span>
+        <span class="pline">
+          <span class="ps1-ok">●</span>
+          <span class="ps1-user"> leandro</span>
+          <span class="ps1-path"> &#xF07B; @wy/awesome-project</span>
+          <span style="color:#e0af68"> &#xE0A0; main*</span>
+        </span>
+        <span class="pline">
+          <span class="ps1-time">[14:32]</span>
+          <span class="ps1-time"> 4s</span>
+          <span class="term-text"> ❯</span>
+          <span class="cmd"> git push</span>
+        </span>
+        <span class="out">Enumerating objects: 3, done.</span>
+        <span class="pline">
+          <span class="ps1-err">●</span>
+          <span class="ps1-user"> leandro</span>
+          <span class="ps1-path"> &#xF07B; @wy/awesome-project</span>
+          <span style="color:#e0af68"> &#xE0A0; main*</span>
+        </span>
+        <span class="pline">
+          <span class="ps1-time">[14:33]</span> <span class="term-text">❯</span>
+          <span class="cursor"></span>
+        </span>
+      </div>
+      <div class="meta">
+        <p>V10 layout with .bashrc ANSI colors: ● circle status, green user (COLOR_GREEN), bold-blue path (COLOR_LIGHT_BLUE), ANSI yellow git, default ❯.</p>
+        <code>switch_ps1 11</code>
+      </div>
+    </div>
+
+    <!-- V12: Workspace B -->
+    <div class="variant-label">
+      <span class="variant-num">12</span>
+      <span class="variant-name">Workspace B</span>
+      <span class="variant-tag">● status · dim wy ❯ · bold-blue project/relpath · yellow git</span>
+    </div>
+    <div class="card" id="v12">
+      <div class="titlebar">
+        <div class="dots"><span class="dot dot-r"></span><span class="dot dot-y"></span><span class="dot dot-g"></span></div>
+        <div class="titlebar-title">bash — wy ❯ crew-api/src/models</div>
+      </div>
+      <div class="term">
+        <span class="pline">
+          <span class="ps1-ok">●</span>
+          <span class="ps1-user"> leandro</span>
+          <span class="term-dim"> wy ❯</span>
+          <span class="ps1-path"> crew-api/src/models</span>
+          <span style="color:#e0af68"> &#xE0A0; main*</span>
+        </span>
+        <span class="pline">
+          <span class="ps1-time">[14:32]</span> <span class="term-text">❯</span>
+          <span class="cmd"> ls</span>
+        </span>
+        <span class="out">README.md  src/  tests/  package.json</span>
+        <span class="pline">
+          <span class="ps1-ok">●</span>
+          <span class="ps1-user"> leandro</span>
+          <span class="term-dim"> wy ❯</span>
+          <span class="ps1-path"> crew-api</span>
+          <span style="color:#e0af68"> &#xE0A0; main</span>
+        </span>
+        <span class="pline" style="margin-top:6px;font-size:11px;color:var(--term-dim);">
+          (at project root — no relpath)
+        </span>
+        <span class="pline">
+          <span class="ps1-ok">●</span>
+          <span class="ps1-user"> leandro</span>
+          <span class="ps1-path"> ~/Documents/notes</span>
+        </span>
+        <span class="pline" style="font-size:11px;color:var(--term-dim);">
+          (outside workspace — falls back to shortened path)
+        </span>
+        <span class="pline">
+          <span class="ps1-time">[14:33]</span> <span class="term-text">❯</span>
+          <span class="cursor"></span>
+        </span>
+      </div>
+      <div class="meta">
+        <p>Workspace slug + <code style="color:var(--cyan);background:none;border:none;padding:0">❯</code> separator in dim, then <code style="color:var(--cyan);background:none;border:none;padding:0">project/relpath</code> in bold blue.
+        Relpath is worktree-aware via <code style="color:var(--cyan);background:none;border:none;padding:0">git rev-parse --show-toplevel</code>.
+        Falls back to <code style="color:var(--cyan);background:none;border:none;padding:0">~</code>-shortened path outside <code style="color:var(--cyan);background:none;border:none;padding:0">~/workspace</code>.</p>
+        <code>switch_ps1 12</code>
+      </div>
+    </div>
+
+    <!-- V13: Workspace C -->
+    <div class="variant-label">
+      <span class="variant-num">13</span>
+      <span class="variant-name">Workspace C</span>
+      <span class="variant-tag">● status · cyan wy · bold-blue project · dim relpath · yellow git</span>
+    </div>
+    <div class="card" id="v13">
+      <div class="titlebar">
+        <div class="dots"><span class="dot dot-r"></span><span class="dot dot-y"></span><span class="dot dot-g"></span></div>
+        <div class="titlebar-title">bash — wy  crew-api  src/models</div>
+      </div>
+      <div class="term">
+        <span class="pline">
+          <span class="ps1-ok">●</span>
+          <span class="ps1-user"> leandro</span>
+          <span class="ps1-host"> wy</span>
+          <span class="ps1-path"> crew-api</span>
+          <span class="term-dim"> src/models</span>
+          <span style="color:#e0af68"> &#xE0A0; main*</span>
+        </span>
+        <span class="pline">
+          <span class="ps1-time">[14:32]</span> <span class="term-text">❯</span>
+          <span class="cmd"> ls</span>
+        </span>
+        <span class="out">README.md  src/  tests/  package.json</span>
+        <span class="pline">
+          <span class="ps1-ok">●</span>
+          <span class="ps1-user"> leandro</span>
+          <span class="ps1-host"> wy</span>
+          <span class="ps1-path"> crew-api</span>
+          <span style="color:#e0af68"> &#xE0A0; main</span>
+        </span>
+        <span class="pline" style="margin-top:6px;font-size:11px;color:var(--term-dim);">
+          (at project root — no relpath)
+        </span>
+        <span class="pline">
+          <span class="ps1-ok">●</span>
+          <span class="ps1-user"> leandro</span>
+          <span class="ps1-path"> ~/Documents/notes</span>
+        </span>
+        <span class="pline" style="font-size:11px;color:var(--term-dim);">
+          (outside workspace — falls back to shortened path)
+        </span>
+        <span class="pline">
+          <span class="ps1-time">[14:33]</span> <span class="term-text">❯</span>
+          <span class="cursor"></span>
+        </span>
+      </div>
+      <div class="meta">
+        <p>Three distinct elements: cyan workspace, bold-blue project, dim relpath.
+        Each disappears gracefully when empty (at workspace/project root).
+        Relpath is worktree-aware. Falls back outside <code style="color:var(--cyan);background:none;border:none;padding:0">~/workspace</code>.</p>
+        <code>switch_ps1 13</code>
+      </div>
+    </div>
+
+    <!-- V14: Workspace B+C -->
+    <div class="variant-label">
+      <span class="variant-num">14</span>
+      <span class="variant-name">Workspace B+C</span>
+      <span class="variant-tag">● · cyan wy ❯ project · dim &#xF07B; relpath · dim · at root · yellow git</span>
+    </div>
+    <div class="card" id="v14">
+      <div class="titlebar">
+        <div class="dots"><span class="dot dot-r"></span><span class="dot dot-y"></span><span class="dot dot-g"></span></div>
+        <div class="titlebar-title">bash — wy ➜ crew-api &#xF07B; src/models</div>
+      </div>
+      <div class="term">
+        <span class="pline">
+          <span class="ps1-ok">●</span>
+          <span class="ps1-user"> leandro</span>
+          <span style="color:#ff9e64"> wy</span><span style="color:#ffb380;"> ➜ </span><span style="color:#ff9e64">crew-api</span>
+          <span class="term-text"> &#xF07B; src/models</span>
+          <span style="color:#e0af68"> &#xE0A0; main*</span>
+        </span>
+        <span class="pline">
+          <span class="ps1-time">[14:32]</span> <span class="term-text">❯</span>
+          <span class="cmd"> ls</span>
+        </span>
+        <span class="out">README.md  src/  tests/  package.json</span>
+        <span class="pline">
+          <span class="ps1-ok">●</span>
+          <span class="ps1-user"> leandro</span>
+          <span style="color:#ff9e64"> wy</span><span style="color:#ffb380;"> ➜ </span><span style="color:#ff9e64">crew-api</span>
+          <span class="term-text"> &#xF07B; /</span>
+          <span style="color:#e0af68"> &#xE0A0; main</span>
+        </span>
+        <span class="pline" style="margin-top:6px;font-size:11px;color:var(--term-dim);">
+          (at project root — &#xF07B; / indicates root)
+        </span>
+        <span class="pline">
+          <span class="ps1-ok">●</span>
+          <span class="ps1-user"> leandro</span>
+          <span class="ps1-path"> ~/Documents/notes</span>
+        </span>
+        <span class="pline" style="font-size:11px;color:var(--term-dim);">
+          (outside workspace — falls back to shortened path)
+        </span>
+        <span class="pline">
+          <span class="ps1-time">[14:33]</span> <span class="term-text">❯</span>
+          <span class="cursor"></span>
+        </span>
+      </div>
+      <div class="meta">
+        <p>B structure with C colors: <span class="ps1-host">cyan ws ❯ project</span> + <span class="term-dim">dim &#xF07B; relpath · (at root)</span>.
+        Folder icon only appears when inside a subdirectory. Worktree-aware relpath.</p>
+        <code>switch_ps1 14</code>
+      </div>
+    </div>
+
+    <!-- V15: Workspace B+C (triangle) -->
+    <div class="variant-label">
+      <span class="variant-num">15</span>
+      <span class="variant-name">Workspace B+C (triangle)</span>
+      <span class="variant-tag">● · orange wy &#x25B6; project · dim &#xF07B; relpath · yellow git</span>
+    </div>
+    <div class="card" id="v15">
+      <div class="titlebar">
+        <div class="dots"><span class="dot dot-r"></span><span class="dot dot-y"></span><span class="dot dot-g"></span></div>
+        <div class="titlebar-title">bash — wy &#x25B6; crew-api &#xF07B; src/models</div>
+      </div>
+      <div class="term">
+        <span class="pline">
+          <span class="ps1-ok">●</span>
+          <span class="ps1-user"> leandro</span>
+          <span style="color:#ff9e64"> wy</span><span style="color:#ffb380;"> &#x25B6; </span><span style="color:#ff9e64">crew-api</span>
+          <span class="term-text"> &#xF07B; src/models</span>
+          <span style="color:#e0af68"> &#xE0A0; main*</span>
+        </span>
+        <span class="pline">
+          <span class="ps1-time">[14:32]</span> <span class="term-text">❯</span>
+          <span class="cmd"> ls</span>
+        </span>
+        <span class="out">README.md  src/  tests/  package.json</span>
+        <span class="pline">
+          <span class="ps1-ok">●</span>
+          <span class="ps1-user"> leandro</span>
+          <span style="color:#ff9e64"> wy</span><span style="color:#ffb380;"> &#x25B6; </span><span style="color:#ff9e64">crew-api</span>
+          <span class="term-text"> &#xF07B; /</span>
+          <span style="color:#e0af68"> &#xE0A0; main</span>
+        </span>
+        <span class="pline" style="margin-top:6px;font-size:11px;color:var(--term-dim);">
+          (at project root — &#xF07B; / indicates root)
+        </span>
+        <span class="pline">
+          <span class="ps1-ok">●</span>
+          <span class="ps1-user"> leandro</span>
+          <span class="ps1-path"> ~/Documents/notes</span>
+        </span>
+        <span class="pline" style="font-size:11px;color:var(--term-dim);">
+          (outside workspace — falls back to shortened path)
+        </span>
+        <span class="pline">
+          <span class="ps1-time">[14:33]</span> <span class="term-text">❯</span>
+          <span class="cursor"></span>
+        </span>
+      </div>
+      <div class="meta">
+        <p>V14 with &#x25B6; (U+25B6, no Nerd Font) instead of <span style="color:var(--cyan)"> ➜ </span>, no spaces.
+        Tighter path segment — workspace and project read as one unit.</p>
+        <code>switch_ps1 15</code>
+      </div>
+    </div>
+
+  </div><!-- /grid -->
+
+  <!-- ── Comparison table ───────────────────────────────────────────────── -->
+  <div style="margin-top:40px;">
+    <table style="width:100%;border-collapse:collapse;font-size:12px;">
+      <thead>
+        <tr style="border-bottom:1px solid var(--border);">
+          <th style="text-align:left;padding:8px 12px;color:var(--dim);font-weight:normal;">#</th>
+          <th style="text-align:left;padding:8px 12px;color:var(--dim);font-weight:normal;">Name</th>
+          <th style="text-align:left;padding:8px 12px;color:var(--dim);font-weight:normal;">Lines</th>
+          <th style="text-align:left;padding:8px 12px;color:var(--dim);font-weight:normal;">user@host</th>
+          <th style="text-align:left;padding:8px 12px;color:var(--dim);font-weight:normal;">Nerd Font</th>
+          <th style="text-align:left;padding:8px 12px;color:var(--dim);font-weight:normal;">Best for</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr style="border-bottom:1px solid var(--border);">
+          <td style="padding:8px 12px;color:var(--dim);">0</td>
+          <td style="padding:8px 12px;">Original (bashrc)</td>
+          <td style="padding:8px 12px;color:var(--dim);">2</td>
+          <td style="padding:8px 12px;color:var(--ui-green);">✓</td>
+          <td style="padding:8px 12px;color:var(--ui-red);">✗</td>
+          <td style="padding:8px 12px;color:var(--dim);">Current default — ANSI colors, no icons</td>
+        </tr>
+        <tr style="border-bottom:1px solid var(--border);">
+          <td style="padding:8px 12px;color:var(--dim);">2</td>
+          <td style="padding:8px 12px;">Two-line Modern</td>
+          <td style="padding:8px 12px;color:var(--dim);">2</td>
+          <td style="padding:8px 12px;color:var(--ui-red);">✗</td>
+          <td style="padding:8px 12px;color:var(--ui-red);">✗</td>
+          <td style="padding:8px 12px;color:var(--dim);">Clean &amp; modern, easy to read</td>
+        </tr>
+        <tr style="border-bottom:1px solid var(--border);">
+          <td style="padding:8px 12px;color:var(--dim);">3</td>
+          <td style="padding:8px 12px;">Powerline</td>
+          <td style="padding:8px 12px;color:var(--dim);">2</td>
+          <td style="padding:8px 12px;color:var(--ui-green);">✓</td>
+          <td style="padding:8px 12px;color:var(--ui-green);">✓</td>
+          <td style="padding:8px 12px;color:var(--dim);">Distinctive, classic dev aesthetic</td>
+        </tr>
+        <tr style="border-bottom:1px solid var(--border);">
+          <td style="padding:8px 12px;color:var(--dim);">4</td>
+          <td style="padding:8px 12px;">Nerd Font Heavy</td>
+          <td style="padding:8px 12px;color:var(--dim);">2</td>
+          <td style="padding:8px 12px;color:var(--ui-red);">✗</td>
+          <td style="padding:8px 12px;color:var(--ui-green);">✓</td>
+          <td style="padding:8px 12px;color:var(--dim);">Rich, icon-forward, compact</td>
+        </tr>
+        <tr style="border-bottom:1px solid var(--border);">
+          <td style="padding:8px 12px;color:var(--dim);">5</td>
+          <td style="padding:8px 12px;">Cobalt Match</td>
+          <td style="padding:8px 12px;color:var(--dim);">2</td>
+          <td style="padding:8px 12px;color:var(--ui-green);">✓</td>
+          <td style="padding:8px 12px;color:var(--ui-red);">✗</td>
+          <td style="padding:8px 12px;color:var(--dim);">Upgraded original, same structure</td>
+        </tr>
+        <tr style="border-bottom:1px solid var(--border);">
+          <td style="padding:8px 12px;color:var(--dim);">6</td>
+          <td style="padding:8px 12px;">Catppuccin</td>
+          <td style="padding:8px 12px;color:var(--dim);">2</td>
+          <td style="padding:8px 12px;color:var(--ui-green);">✓</td>
+          <td style="padding:8px 12px;color:var(--ui-green);">✓</td>
+          <td style="padding:8px 12px;color:var(--dim);">Full user@host + branch icon</td>
+        </tr>
+        <tr style="border-bottom:1px solid var(--border);">
+          <td style="padding:8px 12px;color:var(--dim);">10</td>
+          <td style="padding:8px 12px;">Nerd Font Tokyo Night</td>
+          <td style="padding:8px 12px;color:var(--dim);">2</td>
+          <td style="padding:8px 12px;color:var(--ui-green);">✓</td>
+          <td style="padding:8px 12px;color:var(--ui-green);">✓</td>
+          <td style="padding:8px 12px;color:var(--dim);">V4 color logic · user=git, prompt=contrast</td>
+        </tr>
+        <tr>
+          <td style="padding:8px 12px;color:var(--dim);">11</td>
+          <td style="padding:8px 12px;">Nerd Font + Bashrc</td>
+          <td style="padding:8px 12px;color:var(--dim);">2</td>
+          <td style="padding:8px 12px;color:var(--ui-green);">✓</td>
+          <td style="padding:8px 12px;color:var(--ui-green);">✓</td>
+          <td style="padding:8px 12px;color:var(--dim);">V10 layout · ● status · ANSI green user, blue path, yellow git</td>
+        </tr>
+        <tr style="border-bottom:1px solid var(--border);">
+          <td style="padding:8px 12px;color:var(--dim);">12</td>
+          <td style="padding:8px 12px;">Workspace B</td>
+          <td style="padding:8px 12px;color:var(--dim);">2</td>
+          <td style="padding:8px 12px;color:var(--ui-green);">✓</td>
+          <td style="padding:8px 12px;color:var(--ui-red);">✗</td>
+          <td style="padding:8px 12px;color:var(--dim);">wy ❯ project/relpath · worktree-aware</td>
+        </tr>
+        <tr>
+          <td style="padding:8px 12px;color:var(--dim);">13</td>
+          <td style="padding:8px 12px;">Workspace C</td>
+          <td style="padding:8px 12px;color:var(--dim);">2</td>
+          <td style="padding:8px 12px;color:var(--ui-green);">✓</td>
+          <td style="padding:8px 12px;color:var(--ui-red);">✗</td>
+          <td style="padding:8px 12px;color:var(--dim);">wy · project · relpath · three distinct colors</td>
+        </tr>
+        <tr style="border-bottom:1px solid var(--border);">
+          <td style="padding:8px 12px;color:var(--dim);">14</td>
+          <td style="padding:8px 12px;">Workspace B+C</td>
+          <td style="padding:8px 12px;color:var(--dim);">2</td>
+          <td style="padding:8px 12px;color:var(--ui-green);">✓</td>
+          <td style="padding:8px 12px;color:var(--ui-red);">✗</td>
+          <td style="padding:8px 12px;color:var(--dim);">cyan wy ❯ blue project · dim &#xF07B; relpath</td>
+        </tr>
+        <tr>
+          <td style="padding:8px 12px;color:var(--dim);">15</td>
+          <td style="padding:8px 12px;">Workspace B+C (triangle)</td>
+          <td style="padding:8px 12px;color:var(--dim);">2</td>
+          <td style="padding:8px 12px;color:var(--ui-green);">✓</td>
+          <td style="padding:8px 12px;color:var(--ui-red);">✗</td>
+          <td style="padding:8px 12px;color:var(--dim);">orange wy &#x25B6; project · dim &#xF07B; relpath</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- ── Worktree indicator options ────────────────────────────────────────── -->
+  <div style="margin-top:48px;">
+    <div style="margin-bottom:20px;">
+      <h2 style="font-size:11px;text-transform:uppercase;letter-spacing:0.12em;color:var(--dim);margin-bottom:6px;">Worktree indicator options</h2>
+      <p style="font-size:12px;color:var(--dim);">All based on V14. Detection: <code style="color:var(--cyan);background:none;border:none;padding:0">git rev-parse --git-dir ≠ --git-common-dir</code></p>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;">
+
+      <!-- Option A: ⎇ badge after branch -->
+      <div class="card">
+        <div class="titlebar">
+          <div class="dots"><span class="dot dot-r"></span><span class="dot dot-y"></span><span class="dot dot-g"></span></div>
+          <div class="titlebar-title">A — ⎇ badge after branch</div>
+        </div>
+        <div class="term" style="line-height:1.8;">
+          <span class="pline" style="font-size:11px;color:var(--term-dim);">normal repo:</span>
+          <span class="pline">
+            <span class="ps1-ok">●</span>
+            <span class="ps1-user"> leandro</span>
+            <span style="color:#ff9e64"> wy</span><span style="color:#ffb380;"> ➜ </span><span style="color:#ff9e64">crew-api</span>
+            <span class="term-text"> &#xF07B; src/models</span>
+            <span style="color:#e0af68"> &#xE0A0; main*</span>
+          </span>
+          <span class="pline" style="margin-top:6px;font-size:11px;color:var(--term-dim);">worktree:</span>
+          <span class="pline">
+            <span class="ps1-ok">●</span>
+            <span class="ps1-user"> leandro</span>
+            <span style="color:#ff9e64"> wy</span><span style="color:#ffb380;"> ➜ </span><span style="color:#ff9e64">crew-api</span>
+            <span class="term-text"> &#xF07B; src/models</span>
+            <span style="color:#e0af68"> &#xE0A0; my-feature*</span>
+            <span class="term-dim"> ⎇</span>
+          </span>
+        </div>
+      </div>
+
+      <!-- Option B: worktree name in path -->
+      <div class="card">
+        <div class="titlebar">
+          <div class="dots"><span class="dot dot-r"></span><span class="dot dot-y"></span><span class="dot dot-g"></span></div>
+          <div class="titlebar-title">B — worktree name in path</div>
+        </div>
+        <div class="term" style="line-height:1.8;">
+          <span class="pline" style="font-size:11px;color:var(--term-dim);">normal repo:</span>
+          <span class="pline">
+            <span class="ps1-ok">●</span>
+            <span class="ps1-user"> leandro</span>
+            <span style="color:#ff9e64"> wy</span><span style="color:#ffb380;"> ➜ </span><span style="color:#ff9e64">crew-api</span>
+            <span class="term-text"> &#xF07B; src/models</span>
+            <span style="color:#e0af68"> &#xE0A0; main*</span>
+          </span>
+          <span class="pline" style="margin-top:6px;font-size:11px;color:var(--term-dim);">worktree:</span>
+          <span class="pline">
+            <span class="ps1-ok">●</span>
+            <span class="ps1-user"> leandro</span>
+            <span style="color:#ff9e64"> wy</span><span style="color:#ffb380;"> ➜ </span><span style="color:#ff9e64">crew-api</span>
+            <span style="color:#e0af68;font-size:0.9em;"> (my-feature)</span>
+            <span class="term-dim"> &#xF07B; src/models</span>
+            <span style="color:#e0af68"> &#xE0A0; my-feature*</span>
+          </span>
+        </div>
+      </div>
+
+      <!-- Option C: yellow ❯ when in worktree -->
+      <div class="card">
+        <div class="titlebar">
+          <div class="dots"><span class="dot dot-r"></span><span class="dot dot-y"></span><span class="dot dot-g"></span></div>
+          <div class="titlebar-title">C — ❯ changes color in worktree</div>
+        </div>
+        <div class="term" style="line-height:1.8;">
+          <span class="pline" style="font-size:11px;color:var(--term-dim);">normal repo:</span>
+          <span class="pline">
+            <span class="ps1-ok">●</span>
+            <span class="ps1-user"> leandro</span>
+            <span style="color:#ff9e64"> wy</span><span style="color:#ffb380;"> ➜ </span><span style="color:#ff9e64">crew-api</span>
+            <span class="term-text"> &#xF07B; src/models</span>
+            <span style="color:#e0af68"> &#xE0A0; main*</span>
+          </span>
+          <span class="pline" style="margin-top:6px;font-size:11px;color:var(--term-dim);">worktree (❯ turns yellow):</span>
+          <span class="pline">
+            <span class="ps1-ok">●</span>
+            <span class="ps1-user"> leandro</span>
+            <span style="color:#ff9e64"> wy</span><span style="color:#e0af68;"> ➜ </span><span style="color:#ff9e64">crew-api</span>
+            <span class="term-text"> &#xF07B; src/models</span>
+            <span style="color:#e0af68"> &#xE0A0; my-feature*</span>
+          </span>
+        </div>
+      </div>
+
+      <!-- Option D: different branch icon -->
+      <div class="card">
+        <div class="titlebar">
+          <div class="dots"><span class="dot dot-r"></span><span class="dot dot-y"></span><span class="dot dot-g"></span></div>
+          <div class="titlebar-title">D — swap branch icon (&#xF418; fork)</div>
+        </div>
+        <div class="term" style="line-height:1.8;">
+          <span class="pline" style="font-size:11px;color:var(--term-dim);">normal repo (&#xE0A0; branch):</span>
+          <span class="pline">
+            <span class="ps1-ok">●</span>
+            <span class="ps1-user"> leandro</span>
+            <span style="color:#ff9e64"> wy</span><span style="color:#ffb380;"> ➜ </span><span style="color:#ff9e64">crew-api</span>
+            <span class="term-text"> &#xF07B; src/models</span>
+            <span style="color:#e0af68"> &#xE0A0; main*</span>
+          </span>
+          <span class="pline" style="margin-top:6px;font-size:11px;color:var(--term-dim);">worktree (&#xF418; fork icon):</span>
+          <span class="pline">
+            <span class="ps1-ok">●</span>
+            <span class="ps1-user"> leandro</span>
+            <span style="color:#ff9e64"> wy</span><span style="color:#ffb380;"> ➜ </span><span style="color:#ff9e64">crew-api</span>
+            <span class="term-text"> &#xF07B; src/models</span>
+            <span style="color:#e0af68"> &#xF418; my-feature*</span>
+          </span>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ── Header ─────────────────────────────────────────────────────────── -->
+  <header>
+    <h1>PS1 Variants</h1>
+    <p>6 prompt designs for bash · Ghostty · tmux — none of these change your live config.</p>
+    <p class="note">
+      ⚠ Chrome blocks cross-directory font loading for <code style="color:var(--cyan);background:none;border:none;padding:0">file://</code> URLs.
+      Use the launcher script instead: <code style="color:var(--cyan);background:none;border:none;padding:0">bash ~/.dotfiles/bash/open-ps1-preview.sh</code>
+    </p>
+  </header>
+
+  <!-- ── Quick start ────────────────────────────────────────────────────── -->
+  <div class="quickstart" style="margin-top:40px;">
+    <h2>How to try these</h2>
+    <div class="line"><span class="cmt"># Load all variants (one-time per session)</span></div>
+    <div class="line"><span class="cmd">source ~/.dotfiles/bash/.bash_ps1_experiments</span></div>
+    <div class="line">&nbsp;</div>
+    <div class="line"><span class="cmt"># Switch to any variant instantly</span></div>
+    <div class="line"><span class="cmd">switch_ps1 10  <span class="cmt"># → V10: Nerd Font Tokyo Night</span></span></div>
+    <div class="line"><span class="cmd">switch_ps1     <span class="cmt"># → list all options</span></span></div>
+    <div class="line"><span class="cmd">switch_ps1 0   <span class="cmt"># → restore original</span></span></div>
+  </div>
+
+  <footer>
+    Source: <code style="color:var(--cyan);background:none;border:none;">~/.dotfiles/bash/.bash_ps1_experiments</code>
+    &nbsp;·&nbsp; No existing config was modified.
+  </footer>
+
+</div>
+
+<script>
+const colors = {
+  bashrc: {
+    '--bg-terminal': '#24283b',
+    '--bg-titlebar': '#1f2335',
+    '--term-text':   '#c0caf5',
+    '--term-dim':    '#4e5575',
+    '--ps1-ok':      '#9ece6a',
+    '--ps1-err':     '#f7768e',
+    '--ps1-user':    '#9ece6a',
+    '--ps1-host':    '#7dcfff',
+    '--ps1-path':    '#7aa2f7',
+    '--ps1-git':     '#c0caf5',
+    '--ps1-prompt':  '#c0caf5',
+    '--ps1-time':    '#4e5575',
+    '--pl-s1-bg':    '#3d59a1',
+    '--pl-s1-fg':    '#c0caf5',
+    '--pl-s2-bg':    '#1e2030',
+    '--pl-s2-fg':    '#7aa2f7',
+    '--pl-s3-bg':    '#1a3a1a',
+    '--pl-s3-fg':    '#9ece6a',
+  },
+  cobalt: {
+    '--bg-terminal': '#193549',
+    '--bg-titlebar': '#122537',
+    '--term-text':   '#c8d8e8',
+    '--term-dim':    '#4e6e88',
+    '--ps1-ok':      '#3ad900',
+    '--ps1-err':     '#ff3b48',
+    '--ps1-user':    '#9e7fff',
+    '--ps1-host':    '#4e6e88',
+    '--ps1-path':    '#6490ff',
+    '--ps1-git':     '#9e7fff',
+    '--ps1-prompt':  '#ffc600',
+    '--ps1-time':    '#4e6e88',
+    '--pl-s1-bg':    '#005f87',
+    '--pl-s1-fg':    '#d7ffff',
+    '--pl-s2-bg':    '#00005f',
+    '--pl-s2-fg':    '#afd7ff',
+    '--pl-s3-bg':    '#005f00',
+    '--pl-s3-fg':    '#afffaf',
+  },
+  'tn-storm': {
+    '--bg-terminal': '#24283b',
+    '--bg-titlebar': '#1f2335',
+    '--term-text':   '#c0caf5',
+    '--term-dim':    '#565f89',
+    '--ps1-ok':      '#9ece6a',
+    '--ps1-err':     '#f7768e',
+    '--ps1-user':    '#bb9af7',
+    '--ps1-host':    '#565f89',
+    '--ps1-path':    '#7aa2f7',
+    '--ps1-git':     '#bb9af7',
+    '--ps1-prompt':  '#e0af68',
+    '--ps1-time':    '#565f89',
+    '--pl-s1-bg':    '#3d59a1',
+    '--pl-s1-fg':    '#c0caf5',
+    '--pl-s2-bg':    '#1e2030',
+    '--pl-s2-fg':    '#7aa2f7',
+    '--pl-s3-bg':    '#1a3a1a',
+    '--pl-s3-fg':    '#9ece6a',
+  },
+  'tn-night': {
+    '--bg-terminal': '#1a1b26',
+    '--bg-titlebar': '#16161e',
+    '--term-text':   '#c0caf5',
+    '--term-dim':    '#565f89',
+    '--ps1-ok':      '#9ece6a',
+    '--ps1-err':     '#f7768e',
+    '--ps1-user':    '#bb9af7',
+    '--ps1-host':    '#565f89',
+    '--ps1-path':    '#7aa2f7',
+    '--ps1-git':     '#bb9af7',
+    '--ps1-prompt':  '#e0af68',
+    '--ps1-time':    '#565f89',
+    '--pl-s1-bg':    '#3760bf',
+    '--pl-s1-fg':    '#c0caf5',
+    '--pl-s2-bg':    '#16161e',
+    '--pl-s2-fg':    '#7aa2f7',
+    '--pl-s3-bg':    '#1a2e1a',
+    '--pl-s3-fg':    '#9ece6a',
+  },
+  'tn-moon': {
+    '--bg-terminal': '#222436',
+    '--bg-titlebar': '#1e2030',
+    '--term-text':   '#c8d3f5',
+    '--term-dim':    '#636da6',
+    '--ps1-ok':      '#c3e88d',
+    '--ps1-err':     '#ff757f',
+    '--ps1-user':    '#c099ff',
+    '--ps1-host':    '#636da6',
+    '--ps1-path':    '#82aaff',
+    '--ps1-git':     '#c099ff',
+    '--ps1-prompt':  '#ffc777',
+    '--ps1-time':    '#636da6',
+    '--pl-s1-bg':    '#3e68d7',
+    '--pl-s1-fg':    '#c8d3f5',
+    '--pl-s2-bg':    '#1e2030',
+    '--pl-s2-fg':    '#82aaff',
+    '--pl-s3-bg':    '#1e2e1e',
+    '--pl-s3-fg':    '#c3e88d',
+  },
+  'cat-macchiato': {
+    '--bg-terminal': '#24273a',
+    '--bg-titlebar': '#1e2030',
+    '--term-text':   '#cad3f5',
+    '--term-dim':    '#6e738d',
+    '--ps1-ok':      '#a6da95',
+    '--ps1-err':     '#ed8796',
+    '--ps1-user':    '#f5a97f',
+    '--ps1-host':    '#a5adcb',
+    '--ps1-path':    '#8bd5ca',
+    '--ps1-git':     '#c6a0f6',
+    '--ps1-prompt':  '#c6a0f6',
+    '--ps1-time':    '#a5adcb',
+    '--pl-s1-bg':    '#363a4f',
+    '--pl-s1-fg':    '#cad3f5',
+    '--pl-s2-bg':    '#1e2030',
+    '--pl-s2-fg':    '#8bd5ca',
+    '--pl-s3-bg':    '#1a2a1e',
+    '--pl-s3-fg':    '#a6da95',
+  },
+  'cat-mocha': {
+    '--bg-terminal': '#1e1e2e',
+    '--bg-titlebar': '#181825',
+    '--term-text':   '#cdd6f4',
+    '--term-dim':    '#6c7086',
+    '--ps1-ok':      '#a6e3a1',
+    '--ps1-err':     '#f38ba8',
+    '--ps1-user':    '#fab387',
+    '--ps1-host':    '#a6adc8',
+    '--ps1-path':    '#94e2d5',
+    '--ps1-git':     '#cba6f7',
+    '--ps1-prompt':  '#cba6f7',
+    '--ps1-time':    '#a6adc8',
+    '--pl-s1-bg':    '#313244',
+    '--pl-s1-fg':    '#cdd6f4',
+    '--pl-s2-bg':    '#181825',
+    '--pl-s2-fg':    '#94e2d5',
+    '--pl-s3-bg':    '#1c2a20',
+    '--pl-s3-fg':    '#a6e3a1',
+  },
+}
+
+document.querySelectorAll('.color-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    const palette = colors[btn.dataset.color]
+    if (!palette) return
+    Object.entries(palette).forEach(([k, v]) =>
+      document.documentElement.style.setProperty(k, v)
+    )
+    document.querySelectorAll('.color-btn').forEach(b => b.classList.remove('active'))
+    btn.classList.add('active')
+  })
+})
+</script>
+</body>
+</html>
