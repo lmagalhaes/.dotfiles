@@ -56,7 +56,9 @@ _ps1_context() {
     local pwd="$PWD"
 
     if [[ "$pwd" != "$HOME/workspace/"* ]]; then
-        printf '\t\t%s' "${pwd/#$HOME/~}"
+        local short="$pwd"
+        [[ "$short" == "$HOME"* ]] && short="~${short#$HOME}"
+        printf '\t\t%s' "$short"
         return
     fi
 
@@ -104,16 +106,15 @@ _set_ps1_modern() {
     local green=$'\[\e[0;32m\]'
     local red=$'\[\e[0;31m\]'
     local blue=$'\[\e[1;34m\]'
+    local blue_dim=$'\[\e[2;34m\]'
     local white=$'\[\e[0;37m\]'
     local dim=$'\[\e[2m\]'
-    local orange=$'\[\e[38;2;255;158;100m\]'
-    local orange_dim=$'\[\e[38;2;255;179;128m\]'
     local git_unstaged=$'\[\e[38;2;247;118;142m\]'
     local git_staged=$'\[\e[38;2;158;206;106m\]'
     local git_untracked=$'\[\e[38;2;224;175;104m\]'
     local git_stash=$'\[\e[38;2;115;218;202m\]'
-    local BRANCH=''
-    local FOLDER=''
+    local BRANCH=$'\xee\x82\xa0'
+    local FOLDER=$'\xef\x81\xbb'
     local ARROW='▶'
 
     local status_icon
@@ -127,16 +128,16 @@ _set_ps1_modern() {
 
     local path_part
     if [[ -n "$ws" && -n "$proj" ]]; then
-        path_part="${orange}${ws}${orange_dim} ${ARROW} ${orange}${proj}${NC}"
+        path_part="${blue}${ws}${blue_dim} ${ARROW} ${blue}${proj}${NC}"
         if [[ -n "$rel" ]]; then
-            path_part+=" ${blue}${FOLDER} ${rel}${NC}"
+            path_part+=" ${dim}${FOLDER} ${rel}${NC}"
         else
-            path_part+=" ${blue}${FOLDER} /${NC}"
+            path_part+=" ${dim}${FOLDER} /${NC}"
         fi
     elif [[ -n "$ws" ]]; then
-        path_part="${orange}${ws}${NC}"
+        path_part="${blue}${ws}${NC}"
     else
-        path_part="${blue}${FOLDER} ${rel}${NC}"
+        path_part="${dim}${FOLDER} ${rel}${NC}"
     fi
 
     local pre="${status_icon} ${green}\\u${dim}${_PS1_SSH_HOST}${NC} ${path_part}"
