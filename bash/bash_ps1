@@ -115,7 +115,7 @@ _set_ps1_modern() {
     local git_untracked=$'\[\e[38;2;224;175;104m\]'
     local git_stash=$'\[\e[38;2;115;218;202m\]'
     local BRANCH=$'\xee\x82\xa0'
-    local FOLDER=$'\xef\x81\xbb'
+    local FOLDER=$'\xee\x97\xbf'
     local ARROW='▶'
 
     local status_icon
