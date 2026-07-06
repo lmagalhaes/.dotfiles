@@ -130,14 +130,14 @@ _set_ps1_modern() {
     if [[ -n "$ws" && -n "$proj" ]]; then
         path_part="${blue}${ws}${blue_dim} ${ARROW} ${blue}${proj}${NC}"
         if [[ -n "$rel" ]]; then
-            path_part+=" ${dim}${FOLDER} ${rel}${NC}"
+            path_part+=" ${blue}${FOLDER}${NC}${dim} ${rel}${NC}"
         else
-            path_part+=" ${dim}${FOLDER} /${NC}"
+            path_part+=" ${blue}${FOLDER}${NC}${dim} /${NC}"
         fi
     elif [[ -n "$ws" ]]; then
         path_part="${blue}${ws}${NC}"
     else
-        path_part="${dim}${FOLDER} ${rel}${NC}"
+        path_part="${blue}${FOLDER}${NC}${dim} ${rel}${NC}"
     fi
 
     local pre="${status_icon} ${green}\\u${dim}${_PS1_SSH_HOST}${NC} ${path_part}"
