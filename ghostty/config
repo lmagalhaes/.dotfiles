@@ -1,4 +1,6 @@
-theme = Cobalt Next
+# theme = Cobalt Next
+theme = TokyoNight Storm
+font-family = JetBrainsMono Nerd Font
 
 # Keyboard overrides to match iTerm behavior
 
