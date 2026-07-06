@@ -106,9 +106,10 @@ _set_ps1_modern() {
     local green=$'\[\e[0;32m\]'
     local red=$'\[\e[0;31m\]'
     local blue=$'\[\e[1;34m\]'
-    local blue_dim=$'\[\e[2;34m\]'
     local white=$'\[\e[0;37m\]'
     local dim=$'\[\e[2m\]'
+    local orange=$'\[\e[38;2;255;158;100m\]'
+    local orange_dim=$'\[\e[38;2;255;179;128m\]'
     local git_unstaged=$'\[\e[38;2;247;118;142m\]'
     local git_staged=$'\[\e[38;2;158;206;106m\]'
     local git_untracked=$'\[\e[38;2;224;175;104m\]'
@@ -128,14 +129,14 @@ _set_ps1_modern() {
 
     local path_part
     if [[ -n "$ws" && -n "$proj" ]]; then
-        path_part="${blue}${ws}${blue_dim} ${ARROW} ${blue}${proj}${NC}"
+        path_part="${orange}${ws}${orange_dim} ${ARROW} ${orange}${proj}${NC}"
         if [[ -n "$rel" ]]; then
             path_part+=" ${blue}${FOLDER}${NC}${dim} ${rel}${NC}"
         else
             path_part+=" ${blue}${FOLDER}${NC}${dim} /${NC}"
         fi
     elif [[ -n "$ws" ]]; then
-        path_part="${blue}${ws}${NC}"
+        path_part="${orange}${ws}${NC}"
     else
         path_part="${blue}${FOLDER}${NC}${dim} ${rel}${NC}"
     fi
