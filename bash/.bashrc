@@ -79,42 +79,7 @@ source_if_exists "$HOME/.aliases"
 source_if_exists "$HOMEBREW_PREFIX/etc/bash_completion.d/git-prompt.sh"
 source_if_exists "${XDG_DATA_HOME:-$HOME/.local/share}/bash-completion/completions/git-worktree-completion.bash"
 
-export GIT_PS1_SHOWCOLORHINTS=true
-export GIT_PS1_SHOWUNTRACKEDFILES=true
-export GIT_PS1_SHOWDIRTYSTATE=true
-
-COLOR_NC='\[\e[0m\]'
-COLOR_GREEN='\[\e[0;32m\]'
-COLOR_CYAN='\[\e[0;36m\]'
-COLOR_LIGHT_BLUE='\[\e[1;34m\]'
-COLOR_RED='\[\e[0;31m\]'
-_shorten_pwd() {
-    local pwd="$PWD"
-    pwd="${pwd/#$HOME\/workspace\/lmagalhaes/@lm}"
-    pwd="${pwd/#$HOME\/workspace\/workyard/@wy}"
-    pwd="${pwd/#$HOME/~}"
-    printf '%s' "$pwd"
-}
-
-_set_ps1() {
-    local exit_status=$?
-    local status_icon
-    if [ $exit_status -eq 0 ]; then
-        status_icon="${COLOR_GREEN}✓"
-    else
-        status_icon="${COLOR_RED}✗"
-    fi
-    local pre
-    pre="${status_icon} ${COLOR_GREEN}\\u@${COLOR_CYAN}\\h:${COLOR_LIGHT_BLUE}$(_shorten_pwd)"
-    local post="\n${COLOR_NC}\\$ "
-    if declare -F __git_ps1 >/dev/null 2>&1; then
-        __git_ps1 "$pre" "$post" " [ %s ]"
-    else
-        PS1="${pre}${post}"
-    fi
-}
-
-PROMPT_COMMAND=(_set_ps1)
+source "$DOTFILES_PATH/bash/bash_ps1"
 
 source "$HOME/.orbstack/shell/init.bash" 2>/dev/null || :
 

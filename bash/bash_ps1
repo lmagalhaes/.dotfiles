@@ -1,0 +1,172 @@
+# shellcheck shell=bash
+# Prompt configuration — sourced by .bashrc
+
+# ── Legacy prompt (fallback) ──────────────────────────────────────────────────
+_shorten_pwd() {
+    local pwd="$PWD"
+    pwd="${pwd/#$HOME\/workspace\/lmagalhaes/@lm}"
+    pwd="${pwd/#$HOME\/workspace\/workyard/@wy}"
+    pwd="${pwd/#$HOME/~}"
+    printf '%s' "$pwd"
+}
+
+_set_ps1_legacy() {
+    local exit_status=$?
+    local NC=$'\[\e[0m\]'
+    local green=$'\[\e[0;32m\]'
+    local cyan=$'\[\e[0;36m\]'
+    local blue=$'\[\e[1;34m\]'
+    local red=$'\[\e[0;31m\]'
+
+    local status_icon
+    [ $exit_status -eq 0 ] && status_icon="${green}✓" || status_icon="${red}✗"
+
+    local pre="${status_icon} ${green}\\u@${cyan}\\h:${blue}$(_shorten_pwd)"
+    local post="\n${NC}\\$ "
+
+    if declare -F __git_ps1 >/dev/null 2>&1; then
+        __git_ps1 "$pre" "$post" " [ %s ]"
+    else
+        PS1="${pre}${post}"
+    fi
+}
+
+# ── Command duration timer ────────────────────────────────────────────────────
+_ps1_timer_start=$SECONDS
+_ps1_timer_on=""
+
+_ps1_preexec() {
+    [[ -n "$_ps1_timer_on" ]] && return
+    _ps1_timer_start=$SECONDS
+    _ps1_timer_on=1
+}
+trap '_ps1_preexec' DEBUG
+
+_ps1_format_duration() {
+    local s=$1
+    if   (( s < 60   )); then printf '%ds'     "$s"
+    elif (( s < 3600 )); then printf '%dm %ds' $(( s / 60 )) $(( s % 60 ))
+    else                      printf '%dh %dm' $(( s / 3600 )) $(( (s % 3600) / 60 ))
+    fi
+}
+
+# ── Workspace path context ────────────────────────────────────────────────────
+# Prints tab-separated: workspace_short <TAB> project <TAB> relpath
+_ps1_context() {
+    local pwd="$PWD"
+
+    if [[ "$pwd" != "$HOME/workspace/"* ]]; then
+        printf '\t\t%s' "${pwd/#$HOME/~}"
+        return
+    fi
+
+    local under="${pwd#$HOME/workspace/}"
+    local workspace="${under%%/*}"
+    local ws_short
+    case "$workspace" in
+        lmagalhaes) ws_short="lm" ;;
+        workyard)   ws_short="wy" ;;
+        *)          ws_short="$workspace" ;;
+    esac
+
+    if [[ "$under" != */* ]]; then
+        printf '%s\t\t' "$ws_short"
+        return
+    fi
+
+    local rest="${under#$workspace/}"
+    local project="${rest%%/*}"
+
+    if [[ "$rest" != */* ]]; then
+        printf '%s\t%s\t' "$ws_short" "$project"
+        return
+    fi
+
+    local relpath="" git_root
+    git_root=$(git rev-parse --show-toplevel 2>/dev/null)
+    if [[ -n "$git_root" && "$pwd" == "$git_root/"* ]]; then
+        relpath="${pwd#$git_root/}"
+    else
+        relpath="${rest#$project/}"
+    fi
+
+    printf '%s\t%s\t%s' "$ws_short" "$project" "$relpath"
+}
+
+# ── Modern prompt ─────────────────────────────────────────────────────────────
+_PS1_SSH_HOST=""
+[[ -n "$SSH_CONNECTION" ]] && _PS1_SSH_HOST="@$(hostname -s)"
+
+_set_ps1_modern() {
+    local exit_status=$?
+    local elapsed=$(( SECONDS - _ps1_timer_start ))
+    local NC=$'\[\e[0m\]'
+    local green=$'\[\e[0;32m\]'
+    local red=$'\[\e[0;31m\]'
+    local blue=$'\[\e[1;34m\]'
+    local white=$'\[\e[0;37m\]'
+    local dim=$'\[\e[2m\]'
+    local orange=$'\[\e[38;2;255;158;100m\]'
+    local orange_dim=$'\[\e[38;2;255;179;128m\]'
+    local git_unstaged=$'\[\e[38;2;247;118;142m\]'
+    local git_staged=$'\[\e[38;2;158;206;106m\]'
+    local git_untracked=$'\[\e[38;2;224;175;104m\]'
+    local git_stash=$'\[\e[38;2;115;218;202m\]'
+    local BRANCH=''
+    local FOLDER=''
+    local ARROW='▶'
+
+    local status_icon
+    [ $exit_status -eq 0 ] && status_icon="${green}●" || status_icon="${red}●"
+
+    local dur=""
+    (( elapsed >= 1 )) && dur=" ${dim}$(_ps1_format_duration "$elapsed")${NC}"
+
+    local ws proj rel
+    IFS=$'\t' read -r ws proj rel <<< "$(_ps1_context)"
+
+    local path_part
+    if [[ -n "$ws" && -n "$proj" ]]; then
+        path_part="${orange}${ws}${orange_dim} ${ARROW} ${orange}${proj}${NC}"
+        if [[ -n "$rel" ]]; then
+            path_part+=" ${blue}${FOLDER} ${rel}${NC}"
+        else
+            path_part+=" ${blue}${FOLDER} /${NC}"
+        fi
+    elif [[ -n "$ws" ]]; then
+        path_part="${orange}${ws}${NC}"
+    else
+        path_part="${blue}${FOLDER} ${rel}${NC}"
+    fi
+
+    local pre="${status_icon} ${green}\\u${dim}${_PS1_SSH_HOST}${NC} ${path_part}"
+    local post="\n${dim}[\\A]${dur}${NC} ❯ "
+
+    if git rev-parse --git-dir >/dev/null 2>&1; then
+        local branch flags_str=""
+        branch=$(git symbolic-ref --short HEAD 2>/dev/null) ||
+            branch=$(git rev-parse --short HEAD 2>/dev/null)
+        if [[ -n "$branch" ]]; then
+            git diff --quiet 2>/dev/null          || flags_str+="${git_unstaged}*${NC}"
+            git diff --cached --quiet 2>/dev/null || flags_str+="${git_staged}+${NC}"
+            [ -n "$(git ls-files --others --exclude-standard 2>/dev/null)" ] \
+                                                  && flags_str+="${git_untracked}?${NC}"
+            git rev-parse --verify refs/stash >/dev/null 2>&1 \
+                                                  && flags_str+="${git_stash}%${NC}"
+            local git_str="${white}${BRANCH} ${branch}${NC}"
+            [[ -n "$flags_str" ]] && git_str+=" ${white}(${NC}${flags_str}${white})${NC}"
+            pre+=" ${git_str}"
+        fi
+    fi
+
+    PS1="${pre}${post}"
+    _ps1_timer_on=""
+}
+
+# ── Active variant ────────────────────────────────────────────────────────────
+# Set PS1_VARIANT=legacy in .bashrc (before sourcing this file) to fall back.
+if [[ "${PS1_VARIANT:-modern}" == "legacy" ]]; then
+    PROMPT_COMMAND=(_set_ps1_legacy)
+else
+    PROMPT_COMMAND=(_set_ps1_modern)
+fi
