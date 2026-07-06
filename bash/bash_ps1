@@ -51,14 +51,20 @@ _ps1_format_duration() {
 }
 
 # ── Workspace path context ────────────────────────────────────────────────────
-# Prints tab-separated: workspace_short <TAB> project <TAB> relpath
+# Prints pipe-separated: workspace_short | project | relpath
+# Uses | not \t — bash read strips leading IFS whitespace (tabs), breaking empty-ws detection.
 _ps1_context() {
     local pwd="$PWD"
 
+    local SEP=$'\x1F'
     if [[ "$pwd" != "$HOME/workspace/"* ]]; then
-        local short="$pwd"
-        [[ "$short" == "$HOME"* ]] && short="~${short#$HOME}"
-        printf '\t\t%s' "$short"
+        local short
+        if [[ "$pwd" == "$HOME"* ]]; then
+            short="∼${pwd#"${HOME}"}"   # ∼ U+223C: looks like ~ but won't be tilde-expanded
+        else
+            short="$pwd"
+        fi
+        printf "${SEP}${SEP}%s" "$short"
         return
     fi
 
@@ -72,7 +78,7 @@ _ps1_context() {
     esac
 
     if [[ "$under" != */* ]]; then
-        printf '%s\t\t' "$ws_short"
+        printf "%s${SEP}${SEP}" "$ws_short"
         return
     fi
 
@@ -80,19 +86,33 @@ _ps1_context() {
     local project="${rest%%/*}"
 
     if [[ "$rest" != */* ]]; then
-        printf '%s\t%s\t' "$ws_short" "$project"
+        printf "%s${SEP}%s${SEP}" "$ws_short" "$project"
         return
     fi
 
     local relpath="" git_root
     git_root=$(git rev-parse --show-toplevel 2>/dev/null)
-    if [[ -n "$git_root" && "$pwd" == "$git_root/"* ]]; then
-        relpath="${pwd#$git_root/}"
+    if [[ -n "$git_root" && "$pwd" == "$git_root"* ]]; then
+        relpath="${pwd#"$git_root"}"
+        relpath="${relpath#/}"
+        if [[ -z "$relpath" ]]; then
+            local git_dir
+            git_dir=$(git rev-parse --git-dir 2>/dev/null)
+            if [[ "$git_dir" == */.git/worktrees/* ]]; then
+                relpath="[${git_dir##*/.git/worktrees/}]"
+            else
+                relpath="${rest#"$project"/}"
+            fi
+        fi
     else
-        relpath="${rest#$project/}"
+        relpath="${rest#"$project"/}"
     fi
 
-    printf '%s\t%s\t%s' "$ws_short" "$project" "$relpath"
+    printf "%s${SEP}%s${SEP}%s" "$ws_short" "$project" "$relpath"
+}
+
+_ps1_read_context() {
+    IFS=$'\x1F' read -r _PS1_CTX_WS _PS1_CTX_PROJ _PS1_CTX_REL <<< "$(_ps1_context)"
 }
 
 # ── Modern prompt ─────────────────────────────────────────────────────────────
@@ -124,8 +144,8 @@ _set_ps1_modern() {
     local dur=""
     (( elapsed >= 1 )) && dur=" ${dim}$(_ps1_format_duration "$elapsed")${NC}"
 
-    local ws proj rel
-    IFS=$'\t' read -r ws proj rel <<< "$(_ps1_context)"
+    _ps1_read_context
+    local ws="$_PS1_CTX_WS" proj="$_PS1_CTX_PROJ" rel="$_PS1_CTX_REL"
 
     local path_part
     if [[ -n "$ws" && -n "$proj" ]]; then
