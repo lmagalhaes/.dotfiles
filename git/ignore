@@ -10,6 +10,8 @@ __pycache__/
 *.py[cod]
 *$py.class
 
+# PHP
+**/xdebug.log
 # Node
 node_modules
 npm-debug.log
