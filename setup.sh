@@ -50,6 +50,19 @@ if command -v poetry &> /dev/null; then
   poetry completions bash > "$COMPLETIONS_DIR/poetry"
 fi
 
+GIT_CONFIG="$HOME/.config/git/config"
+GIT_CONFIG_TEMPLATE="$DOTFILES/git/config.template"
+
+# Convert any legacy stowed symlink to a plain file BEFORE stow -R runs.
+# stow -R removes the old config symlink (now in .stow-local-ignore) before our
+# post-loop block could inspect it, so the migration must happen here.
+if [ -L "$GIT_CONFIG" ]; then
+  echo "  Migrating git/config: replacing stowed symlink with plain file (preserving content)..."
+  cp -L "$GIT_CONFIG" "${GIT_CONFIG}.tmp" 2>/dev/null || cp "$GIT_CONFIG_TEMPLATE" "${GIT_CONFIG}.tmp"
+  rm "$GIT_CONFIG"
+  mv "${GIT_CONFIG}.tmp" "$GIT_CONFIG"
+fi
+
 echo "Installing packages with stow (XDG)..."
 PACKAGES=("tmux" "git" "readline" "vim" "ghostty")
 
@@ -63,6 +76,12 @@ for package in "${PACKAGES[@]}"; do
     echo "  Warning: $package directory not found, skipping"
   fi
 done
+
+# Generate ~/.config/git/config from template on a fresh install.
+if [ ! -f "$GIT_CONFIG" ]; then
+  echo "  Generating git/config from template..."
+  cp "$GIT_CONFIG_TEMPLATE" "$GIT_CONFIG"
+fi
 
 # mise — dedicated block to avoid the mise-config/ dir being mistaken for a project config
 # (mise scans for mise/config.toml in the working directory; using mise/ as the package name triggers that)

@@ -5,7 +5,7 @@ Modular Git config with visible filenames: shared defaults, per-profile identiti
 Managed by stow with `~/.config/git` as the target (XDG Base Directory).
 
 ## Layout
-- `config` – entry point, stowed to `~/.config/git/config`. Contains the include for `main.gitconfig` plus any machine-local tool config (e.g. CodeRabbit machine ID).
+- `config.template` – template for `~/.config/git/config`. Generated into a plain (non-stowed) file by `setup.sh` so tools can write machine-local data (e.g. CodeRabbit machine ID) without dirtying the repo.
 - `main.gitconfig` – includes base, profiles, and host overrides via relative paths.
 - `base.gitconfig` – shared defaults (pull/rebase, aliases, LFS filter, etc.).
 - `profiles/` – one file per identity (`personal.gitconfig`, `workyard.gitconfig`, plus `profile-template.gitconfig` to copy).
@@ -14,11 +14,27 @@ Managed by stow with `~/.config/git` as the target (XDG Base Directory).
 
 ## Setup
 
-Run `~/.dotfiles/setup.sh`, which stows the package to `~/.config/git`:
+Run `~/.dotfiles/setup.sh`. It stows the package to `~/.config/git` and generates
+`~/.config/git/config` from `config.template` if it doesn't already exist:
 
 ```bash
-stow -R --target "$HOME/.config/git" git
+~/.dotfiles/setup.sh
 ```
+
+### Migrating from the old stowed setup
+
+If your machine still has the old `~/.config/git/config` symlink (pointing into the
+dotfiles repo), pull may fail if tools like CodeRabbit have written to the file through
+that symlink, leaving it locally modified. Clear it first:
+
+```bash
+git -C ~/.dotfiles checkout -- git/config   # discard local tool writes
+git -C ~/.dotfiles pull
+~/.dotfiles/setup.sh                        # converts the symlink to a plain file
+```
+
+After `setup.sh` runs, `~/.config/git/config` is a plain file and future tool writes
+stay out of the repo.
 
 ## Adding a profile
 1) Copy the template:

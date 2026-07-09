@@ -2,6 +2,9 @@
 *.sw[po]
 secrets.env
 
+# Generated during setup — not tracked (tools like CodeRabbit write machine-local data here)
+git/config
+
 # Tmux plugins folder
 tmux/.tmux/plugins/
 
