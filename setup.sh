@@ -110,14 +110,13 @@ fi
 # Claude Code — link authored entrypoints and render settings
 echo ""
 echo "Setting up Claude Code..."
-if [ ! -d "claude-code" ]; then
-  echo "  Warning: claude-code directory not found, skipping"
+if [ ! -d "assistant" ]; then
+  echo "  Warning: assistant installer directory not found, skipping"
 elif ! command -v jq &> /dev/null; then
   echo "  Warning: jq not installed — Claude settings not rendered"
   echo "  Install with: brew install jq, then re-run setup.sh"
 else
-  bash "$DOTFILES/claude-code/scripts/link-claude-entrypoints.sh"
-  bash "$DOTFILES/claude-code/scripts/render-claude-settings.sh"
+  bash "$DOTFILES/bin/setup-assistant-config"
 fi
 
 # Stow packages with non-HOME targets

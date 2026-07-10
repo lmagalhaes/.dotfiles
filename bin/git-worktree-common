@@ -74,7 +74,8 @@ check_git_repo() {
 #     REPO_ROOT=$(get_repo_root_logical)
 #     error "Worktree not found: $REPO_ROOT/.worktrees/$BRANCH"
 #
-# For more details, see: ~/.dotfiles/.claude/docs/git-worktree-analysis-2026-01-20.md
+# For more details, see:
+#   ~/.assistant-config/claude/design/claude-authored-runtime-separation.md
 #
 # ============================================================================
 

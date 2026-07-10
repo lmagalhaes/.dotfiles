@@ -1,0 +1,51 @@
+#!/usr/bin/env bash
+
+set -euo pipefail
+
+SANDBOX_ROOT="${1:-/private/tmp/assistant-config-sandbox}"
+SANDBOX_HOME="${SANDBOX_ROOT}/home"
+DOTFILES_SRC="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd -P)"
+SANDBOX_DOTFILES="${SANDBOX_HOME}/.dotfiles"
+
+mkdir -p \
+  "${SANDBOX_HOME}" \
+  "${SANDBOX_HOME}/.config" \
+  "${SANDBOX_HOME}/.local/share" \
+  "${SANDBOX_HOME}/.local/state" \
+  "${SANDBOX_HOME}/.cache" \
+  "${SANDBOX_HOME}/.claude"
+
+if [ -L "${SANDBOX_DOTFILES}" ] || [ -e "${SANDBOX_DOTFILES}" ]; then
+  rm -rf "${SANDBOX_DOTFILES}"
+fi
+ln -s "${DOTFILES_SRC}" "${SANDBOX_DOTFILES}"
+
+export HOME="${SANDBOX_HOME}"
+export XDG_CONFIG_HOME="${HOME}/.config"
+export XDG_DATA_HOME="${HOME}/.local/share"
+export XDG_STATE_HOME="${HOME}/.local/state"
+export XDG_CACHE_HOME="${HOME}/.cache"
+
+cat <<EOF
+Sandbox ready.
+
+HOME=${HOME}
+XDG_CONFIG_HOME=${XDG_CONFIG_HOME}
+XDG_DATA_HOME=${XDG_DATA_HOME}
+XDG_STATE_HOME=${XDG_STATE_HOME}
+XDG_CACHE_HOME=${XDG_CACHE_HOME}
+
+Dotfiles checkout inside sandbox:
+  ${SANDBOX_DOTFILES}
+
+Nothing in your real home directory will be touched while you stay in this shell.
+
+Suggested checks:
+  pwd
+  echo \$HOME
+  ls -la ~/.claude
+  cd ~/.dotfiles
+  bash setup.sh
+EOF
+
+exec "${SHELL:-/bin/bash}" -l

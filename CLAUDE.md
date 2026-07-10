@@ -59,14 +59,15 @@ Scripts in `bin/` are available as git subcommands (e.g., `git worktree-create`)
 
 Worktrees are created under `<repo>/.worktrees/<branch-name>/`. The create script also generates a Docker compose file from `templates/compose.worktree.template.yaml` for parallel container environments.
 
-### claude-code/ directory (not stowed)
+### assistant config installer layer (not stowed)
 
-Contains all authored Claude Code configuration. Not managed by stow — `setup.sh` calls two helper scripts instead:
+Dotfiles now own the installer layer for Claude Code. `setup.sh` calls:
 
-- `scripts/link-claude-entrypoints.sh` — creates directory-level symlinks in `~/.claude/` pointing into `authored/`
-- `scripts/render-claude-settings.sh` — merges `authored/config/settings.managed.json` into `~/.claude/settings.json`
+- `bin/setup-assistant-config` — refreshes `~/.claude` entrypoints and renders managed settings
+- `assistant/link-claude-entrypoints.sh` — reads authored source from `~/.assistant-config/claude`
+- `assistant/render-claude-settings.sh` — merges `authored/settings.managed.json` into `~/.claude/settings.json`
 
-`authored/` holds rules, skills, hooks, scripts, and plans. A new file added under `authored/rules/` or `authored/skills/` appears live in `~/.claude/` immediately without re-running setup.
+The authored source lives in `~/.assistant-config/claude/`. It holds rules, skills, hooks, tooling, docs, design notes, and `settings.managed.json`. A new file added under `rules/` or `skills/` appears live in `~/.claude/` immediately without re-running setup.
 
 ### macos/
 

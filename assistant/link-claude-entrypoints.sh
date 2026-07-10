@@ -15,12 +15,31 @@ for arg in "$@"; do
   [ "$arg" = "--force" ] && FORCE=true
 done
 
-DOTFILES_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
-AUTHORED_DIR="$DOTFILES_DIR/claude-code/authored"
 CLAUDE_DIR="$HOME/.claude"
 
+resolve_authored_dir() {
+  if [ -n "${ASSISTANT_CONFIG_CLAUDE_DIR:-}" ]; then
+    printf '%s\n' "$ASSISTANT_CONFIG_CLAUDE_DIR"
+    return
+  fi
+
+  if [ -n "${ASSISTANT_CONFIG_DIR:-}" ]; then
+    printf '%s\n' "$ASSISTANT_CONFIG_DIR/claude"
+    return
+  fi
+
+  if [ -d "$HOME/.assistant-config/claude" ]; then
+    printf '%s\n' "$HOME/.assistant-config/claude"
+    return
+  fi
+
+  return 1
+}
+
+AUTHORED_DIR="$(resolve_authored_dir || true)"
+
 if [ ! -d "$AUTHORED_DIR" ]; then
-  echo "link-claude-entrypoints: authored dir not found: $AUTHORED_DIR" >&2
+  echo "link-claude-entrypoints: authored dir not found. Expected ~/.assistant-config/claude or ASSISTANT_CONFIG_CLAUDE_DIR." >&2
   exit 1
 fi
 
@@ -32,13 +51,12 @@ link() {
   local dest="$CLAUDE_DIR/$name"
 
   if [ -L "$dest" ]; then
-    # Already a symlink — replace regardless of current target.
     rm "$dest"
   elif [ -e "$dest" ]; then
     if [ "$FORCE" = true ]; then
       rm -rf "$dest"
     else
-      echo "link-claude-entrypoints: skipping $dest — real path exists (use --force to overwrite)" >&2
+      echo "link-claude-entrypoints: skipping $dest - real path exists (use --force to overwrite)" >&2
       return 1
     fi
   fi
@@ -48,21 +66,15 @@ link() {
 }
 
 echo "Linking authored entrypoints into $CLAUDE_DIR..."
+echo "  source: $AUTHORED_DIR"
 
-# Directory symlink — the whole authored tree in one link.
 link "authored" "$AUTHORED_DIR"
-
-# Top-level files Claude requires at fixed names.
-link "CLAUDE.md"   "authored/CLAUDE.md"
-link "RTK.md"      "authored/RTK.md"
-
-# Directory-level symlinks so new files appear live without re-running this script.
-link "rules"  "authored/rules"
+link "CLAUDE.md" "authored/CLAUDE.md"
+link "RTK.md" "authored/RTK.md"
+link "rules" "authored/rules"
 link "skills" "authored/skills"
 
-# hooks/ and scripts/ are NOT linked separately — they are accessed by Claude Code
-# via the authored/ tree (e.g. ~/.claude/authored/hooks/rtk-rewrite.sh). Keeping
-# them out of the top-level avoids a real directory at ~/.claude/hooks/ that stow
-# or other tools might try to manage.
+# hooks/ and tooling/ are intentionally accessed via ~/.claude/authored/...,
+# not projected as top-level runtime namespaces.
 
 echo "Done."
