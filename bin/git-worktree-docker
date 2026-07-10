@@ -93,18 +93,27 @@ if [ "$1" = "init" ]; then
 
     COMPOSE_FILE="$DOCKER_DIR/compose.worktree.${BRANCH_SLUG}.yaml"
     ENV_FILE="$DOCKER_DIR/.env.${BRANCH_SLUG}"
+    GIT_FILE="$DOCKER_DIR/crew-api/.worktrees/${BRANCH_NAME}/.git.docker"
 
     # Generate minimal compose file (Traefik routing + container names only)
     info "Generating compose file: compose.worktree.${BRANCH_SLUG}.yaml"
     sed -e "s|SLUG|${BRANCH_SLUG}|g" "$TEMPLATE_FILE" > "$COMPOSE_FILE"
     success "Compose file created: $COMPOSE_FILE"
 
-    # Generate env file (mount path + GIT_DIR)
+    # Generate container-safe git metadata file for mounted worktree
+    info "Generating git metadata file: .worktrees/${BRANCH_NAME}/.git.docker"
+    cat > "$GIT_FILE" <<EOF2
+gitdir: /opt/crew-api.git/worktrees/${BRANCH_NAME}
+EOF2
+    success "Git metadata file created: $GIT_FILE"
+
+    # Generate env file (mount path + GIT_DIR + .git override path)
     info "Generating env file: .env.${BRANCH_SLUG}"
-    cat > "$ENV_FILE" <<EOF
+    cat > "$ENV_FILE" <<EOF2
 CREW_API_MOUNT_PATH=./crew-api/.worktrees/${BRANCH_NAME}
 CREW_API_GIT_DIR=/opt/crew-api.git/worktrees/${BRANCH_NAME}
-EOF
+CREW_API_GIT_FILE=./crew-api/.worktrees/${BRANCH_NAME}/.git.docker
+EOF2
     success "Env file created: $ENV_FILE"
 
     echo ""
