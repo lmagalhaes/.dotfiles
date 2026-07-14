@@ -20,9 +20,3 @@ PROJECT_DESCRIPTION="Workyard Infra"
 
 # Root directory for the project
 PROJECT_ROOT="$HOME/workspace/workyard/infra"
-
-# Command to run in the runtime window (optional, leave empty if not needed)
-PROJECT_CMD="pwd"
-
-# Optional: Uncomment to disable specific windows
-# SKIP_RUNTIME=true

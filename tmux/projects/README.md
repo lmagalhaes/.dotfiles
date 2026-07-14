@@ -9,20 +9,6 @@ Dynamic project session management for tmux with automatic menu generation.
 - Select a project from the menu
 - The session will be created (first time) or switched to (if exists)
 
-## Project Structure
-
-Each project has its own configuration file in this directory:
-
-```
-projects/
-├── README.md              # This file
-├── template.sh.example    # Template for new projects
-├── crew-api.sh           # CrewAPI project config
-├── core.sh               # Core project config
-├── web-app.sh            # WebApp project config
-└── web-app-v2.sh         # WebAppV2 project config
-```
-
 ## Adding a New Project
 
 1. **Copy the template:**
@@ -40,8 +26,8 @@ projects/
    - `PROJECT_NAME` - Identifier for session name (e.g., "my-project")
    - `PROJECT_KEY` - Single character hotkey (e.g., "m")
    - `PROJECT_DESCRIPTION` - Display name in menu (e.g., "My Project")
+   - `PROJECT_CATEGORY` - Group label in menu (e.g., "Workyard", "Personal")
    - `PROJECT_ROOT` - Root directory path
-   - `PROJECT_CMD` - Command to run in runtime window (optional)
 
 4. **Make it executable:**
    ```bash
@@ -54,34 +40,21 @@ projects/
 
 ```bash
 #!/bin/bash
+PROJECT_CATEGORY="Personal"
 PROJECT_NAME="my-project"
 PROJECT_KEY="m"
 PROJECT_DESCRIPTION="My Project"
 PROJECT_ROOT="$HOME/workspace/my-project"
-PROJECT_CMD="npm run dev"
 ```
 
 ## Session Structure
 
-Each project session includes:
-- **editor** window (2 panes) - Your main workspace
-- **runtime** window - Runs PROJECT_CMD
-- **logs** window - Tails log files
-- **shell** window - Additional terminal
-
-## Optional Configuration
-
-Disable specific windows by adding to your project file:
-
-```bash
-SKIP_RUNTIME=true   # No runtime window
-SKIP_LOGS=true      # No logs window
-SKIP_SHELL=true     # No shell window
-```
+Each project session is a single window named `editor` with 2 horizontal panes.
+On subsequent opens, the existing session is reactivated as-is.
 
 ## Manual Usage
 
-Launch a project directly from command line:
+Launch a project directly from the command line:
 ```bash
 ~/.dotfiles/tmux/project-launcher.sh <project-name>
 ```
@@ -94,7 +67,9 @@ List available projects:
 ## Files
 
 - **project-launcher.sh** - Creates/switches to project sessions
-- **project-menu.sh** - Builds dynamic menu from projects directory
+- **project-fzf.sh** - fzf-based interactive picker (`Prefix D`)
+- **project-menu.sh** - Native tmux grouped menu (`Prefix P`)
+- **project-preview.sh** - fzf preview pane content
 - **projects/*.sh** - Individual project configurations
 
 ## Troubleshooting

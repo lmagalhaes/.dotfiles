@@ -6,7 +6,7 @@ set -euo pipefail
 
 PROJECTS_DIR="${HOME}/.dotfiles/tmux/projects"
 LAUNCHER="${HOME}/.dotfiles/tmux/project-launcher.sh"
-PREVIEW_WRAPPER="${HOME}/.dotfiles/tmux/project-preview-wrapper.sh"
+PREVIEW="${HOME}/.dotfiles/tmux/project-preview.sh"
 
 # Check if fzf is available
 if ! command -v fzf &> /dev/null; then
@@ -46,7 +46,7 @@ selected=$(echo -n "$project_list" | fzf \
     --border=rounded \
     --prompt="Select Project: " \
     --header="Use fuzzy search to filter projects" \
-    --preview="bash -c '$PREVIEW_WRAPPER \"\$1\" $tmp_map' _ {}" \
+    --preview="bash '$PREVIEW' {} $tmp_map" \
     --preview-window=right:50%:wrap \
     --bind='ctrl-/:toggle-preview' \
     --no-info \
