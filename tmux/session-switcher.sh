@@ -22,9 +22,11 @@ session_lines=("${tmux_out[@]:2}")
 # Most-recently-attached session first, excluding the current one
 sorted_sessions=$(printf '%s\n' "${session_lines[@]}" | sort -t $'\t' -k1,1 -rn)
 
-session_list=$(printf '\033[1m%s\033[0m\n' "$current_session")
+# "* " marks the current session; other rows get a matching two-column
+# blank prefix so names stay aligned
+session_list=$(printf '\033[1m* %s\033[0m\n' "$current_session")
 while IFS=$'\t' read -r _ session; do
-    [ "$session" != "$current_session" ] && session_list+=$'\n'"$session"
+    [ "$session" != "$current_session" ] && session_list+=$'\n'"  $session"
 done <<< "$sorted_sessions"
 
 mouse_bind=()
@@ -37,16 +39,16 @@ selected=$(echo -n "$session_list" | fzf \
     --layout=reverse \
     --border=rounded \
     --prompt="Switch to session: " \
-    --header="Enter: switch  |  Esc: cancel" \
+    --header=$'Enter: switch  |  Esc: cancel  |  Ctrl-j/k: move\n' \
     --no-info \
     "${mouse_bind[@]}" \
     || true)
 
 [ -z "$selected" ] && exit 0
 
-# Strip the bold ANSI codes; the current row carries no extra text marker,
-# so this always recovers the real session name with no ambiguity
-target_session=$(printf '%s' "$selected" | sed -E 's/\x1b\[[0-9;]*m//g')
+# Strip the bold ANSI codes and the leading two-column marker ("* " or "  ")
+clean_selected=$(printf '%s' "$selected" | sed -E 's/\x1b\[[0-9;]*m//g')
+target_session="${clean_selected#??}"
 
 [ "$target_session" = "$current_session" ] && exit 0
 
