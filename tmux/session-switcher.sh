@@ -12,16 +12,23 @@ if ! command -v fzf &> /dev/null; then
     exit 1
 fi
 
-current_session=$(tmux display-message -p '#S')
-other_sessions=$(tmux list-sessions -F '#S' | grep -v -F -x -e "$current_session" || true)
+# One tmux invocation instead of three separate ones — each client call pays
+# a fixed ~30-50ms fork/socket cost, which added up to noticeable popup lag
+mapfile -t tmux_out < <(tmux display-message -p '#S' \; show-options -gv mouse \; list-sessions -F $'#{session_last_attached}\t#{session_name}')
+current_session="${tmux_out[0]}"
+mouse_opt="${tmux_out[1]}"
+session_lines=("${tmux_out[@]:2}")
+
+# Most-recently-attached session first, excluding the current one
+sorted_sessions=$(printf '%s\n' "${session_lines[@]}" | sort -t $'\t' -k1,1 -rn)
 
 session_list=$(printf '\033[1m%s\033[0m\n' "$current_session")
-while IFS= read -r session; do
-    [ -n "$session" ] && session_list+=$'\n'"$session"
-done <<< "$other_sessions"
+while IFS=$'\t' read -r _ session; do
+    [ "$session" != "$current_session" ] && session_list+=$'\n'"$session"
+done <<< "$sorted_sessions"
 
 mouse_bind=()
-if [ "$(tmux show-options -gv mouse)" = "on" ]; then
+if [ "$mouse_opt" = "on" ]; then
     mouse_bind=(--bind "left-click:accept")
 fi
 
