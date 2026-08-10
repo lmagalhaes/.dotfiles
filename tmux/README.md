@@ -44,4 +44,4 @@ See `projects/README.md` for how to add and configure project sessions.
 
 ## Reload config
 
-`Prefix r` — reloads `~/.config/tmux/tmux.conf` in place.
+`Prefix Shift+r` — reloads `~/.config/tmux/tmux.conf` in place.
