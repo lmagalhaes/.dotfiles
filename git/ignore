@@ -21,12 +21,14 @@ npm-debug.log
 .venv
 .env.bak
 .venv.bak
+.mcp.json
 
 # Git worktrees
 .worktrees/
 **/.git.docker
 **/.claude/settings.local.json
 **/.claude/plans/
+**/.claude/docs/
 
 # Local dev tooling (per-repo, not shared/committed)
 dev-scripts/
