@@ -123,17 +123,6 @@ let g:fzf_layout = { 'window': { 'width': 0.9, 'height': 0.6, 'relative': v:true
 
 let mapleader = " "
 nnoremap <Leader>r :source $MYVIMRC<CR>
-" You can split the window in Vim by typing :split or :vsplit.
-" Navigate the split view easier by pressing CTRL+j, CTRL+k, CTRL+h, or CTRL+l.
-nnoremap <c-j> <c-w>j
-nnoremap <c-k> <c-w>k
-nnoremap <c-h> <c-w>h
-nnoremap <c-l> <c-w>l
-
-nnoremap <C-J> <C-W><C-J>
-nnoremap <C-K> <C-W><C-K>
-nnoremap <C-L> <C-W><C-L>
-nnoremap <C-H> <C-W><C-H>
 
 set splitbelow
 set splitright
@@ -152,8 +141,14 @@ nnoremap N Nzz
 " Extend runtimepath to include XDG data dir so vim-plug's autoload is found
 let &runtimepath = $XDG_DATA_HOME . '/vim,' . &runtimepath . ',' . $XDG_DATA_HOME . '/vim/after'
 
+" herdr pane navigation owns Ctrl+h/j/k/l; let vim-tmux-navigator load without
+" its own mappings so there's a single source of truth (see plugin README)
+let g:tmux_navigator_no_mappings = 1
+
 call plug#begin($XDG_DATA_HOME . '/vim/plugged')
 Plug 'junegunn/fzf', { 'do': { -> fzf#install() } }
 Plug 'junegunn/fzf.vim'
 Plug 'christoomey/vim-tmux-navigator'
 call plug#end()
+
+source $XDG_CONFIG_HOME/herdr/plugins/github/vim-herdr-navigation-a8bf42123d81/editor/vim.vim
