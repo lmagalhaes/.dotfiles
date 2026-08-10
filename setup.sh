@@ -64,7 +64,7 @@ if [ -L "$GIT_CONFIG" ]; then
 fi
 
 echo "Installing packages with stow (XDG)..."
-PACKAGES=("tmux" "git" "readline" "vim" "ghostty")
+PACKAGES=("tmux" "git" "readline" "vim" "ghostty" "herdr")
 
 for package in "${PACKAGES[@]}"; do
   if [ -d "$package" ]; then

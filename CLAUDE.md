@@ -18,7 +18,7 @@ cd ~/.dotfiles && stow -nv <package>
 cd ~/.dotfiles && stow -D <package>
 ```
 
-Stow packages: `vim bash tmux readline ghostty`
+Stow packages: `vim bash tmux readline ghostty herdr`
 
 ## Package Management
 

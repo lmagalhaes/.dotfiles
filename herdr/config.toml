@@ -1,0 +1,20 @@
+onboarding = false
+[ui]
+show_agent_labels_on_pane_borders = false
+
+agent_panel_sort = "priority"
+[ui.sound]
+enabled = false
+
+[theme]
+name = "tokyo-night"
+auto_switch = false
+
+
+[keys]
+workspace_picker = "ctrl+shift+l"
+
+[[keys.command]]
+key = "prefix+a"
+type = "shell"
+command = "toggle-terminal-theme"
