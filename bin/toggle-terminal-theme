@@ -1,0 +1,78 @@
+#!/usr/bin/env bash
+# toggle-terminal-theme - Flip Ghostty + tmux between dark and light,
+# independent of macOS system Appearance.
+#
+# Rewrites the `theme =` line in ghostty/config (Tokyo Night Storm <-> Day),
+# updates tmux's catppuccin flavor (mocha <-> latte), and sets herdr's
+# theme.name directly (herdr's own auto_switch host-detection left some UI
+# surfaces like modals/menus on the old theme, so this sets it explicitly
+# instead and reloads).
+#
+# Ghostty has no CLI/IPC reload hook, so this simulates its own
+# Cmd+Shift+, reload-config keybind via System Events. Requires this
+# terminal to be the frontmost app when run (true when triggered from a
+# tmux keybinding inside Ghostty), and macOS Accessibility permission —
+# granted via a one-time system prompt the first time it runs.
+#
+# Usage:
+#   toggle-terminal-theme          # flip from current state
+#   toggle-terminal-theme dark
+#   toggle-terminal-theme light
+
+set -euo pipefail
+
+readonly GHOSTTY_CONFIG="$HOME/.dotfiles/ghostty/config"
+readonly TMUX_CONFIG="$XDG_CONFIG_HOME/tmux/tmux.conf"
+readonly HERDR_CONFIG="$HOME/.dotfiles/herdr/config.toml"
+
+current_mode() {
+    if grep -q '^theme = TokyoNight Day$' "$GHOSTTY_CONFIG"; then
+        echo "light"
+    else
+        echo "dark"
+    fi
+}
+
+target_mode="${1:-}"
+if [[ -z "$target_mode" ]]; then
+    if [[ "$(current_mode)" == "dark" ]]; then
+        target_mode="light"
+    else
+        target_mode="dark"
+    fi
+fi
+
+case "$target_mode" in
+    dark)
+        ghostty_theme="TokyoNight Storm"
+        tmux_flavor="mocha"
+        herdr_theme="tokyo-night"
+        ;;
+    light)
+        ghostty_theme="TokyoNight Day"
+        tmux_flavor="latte"
+        herdr_theme="tokyo-night-day"
+        ;;
+    *)
+        echo "Usage: toggle-terminal-theme [dark|light]" >&2
+        exit 1
+        ;;
+esac
+
+sed -i '' "s/^theme = .*/theme = ${ghostty_theme}/" "$GHOSTTY_CONFIG"
+
+if tmux list-sessions &>/dev/null; then
+    tmux set -g @catppuccin_flavor "$tmux_flavor" \; source-file "$TMUX_CONFIG"
+fi
+
+if [[ -f "$HERDR_CONFIG" ]]; then
+    sed -i '' "s/^name = .*/name = \"${herdr_theme}\"/" "$HERDR_CONFIG"
+    herdr server reload-config &>/dev/null || true
+fi
+
+if osascript -e 'tell application "System Events" to keystroke "," using {command down, shift down}' &>/dev/null; then
+    echo "Switched to ${target_mode}: Ghostty -> ${ghostty_theme}, tmux -> ${tmux_flavor}, herdr -> ${herdr_theme} (reloaded)"
+else
+    echo "Switched to ${target_mode}: Ghostty -> ${ghostty_theme}, tmux -> ${tmux_flavor}, herdr -> ${herdr_theme}"
+    echo "Couldn't auto-reload Ghostty — grant Accessibility permission (System Settings > Privacy & Security > Accessibility) and try again, or press Cmd+Shift+, yourself." >&2
+fi
