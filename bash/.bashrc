@@ -63,10 +63,6 @@ if command_exists keychain; then
     eval "$(keychain -q --timeout 480 --eval ~/.ssh/id_ed25519 ~/.ssh/id_rsa)"
 fi
 
-if command_exists task; then
-    eval "$(task --completion bash)"
-fi
-
 if [[ -r "$HOMEBREW_PREFIX/etc/profile.d/bash_completion.sh" ]]; then
     source "$HOMEBREW_PREFIX/etc/profile.d/bash_completion.sh"
 fi
