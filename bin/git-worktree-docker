@@ -33,6 +33,7 @@ show_help() {
     echo "  ps                 List running containers"
     echo "  init               Generate compose + env files for current worktree"
     echo "  status             Show which containers are running"
+    echo "  clean              Stop containers and delete this worktree's generated compose/env files"
     echo ""
     echo "Examples:"
     echo "  git wt-docker up -d"
@@ -150,6 +151,29 @@ if [ "$1" = "status" ]; then
     ENV_OPT=""
     [ -f "$DOCKER_DIR/.env.${BRANCH_SLUG}" ] && ENV_OPT="--env-file .env.${BRANCH_SLUG}"
     docker compose $COMPOSE_FILES $ENV_OPT --project-name "$PROJECT_NAME" ps 2>/dev/null || echo "  No containers running"
+    exit 0
+fi
+
+# Handle special 'clean' command - stop containers and delete generated overlay files
+if [ "$1" = "clean" ]; then
+    if [ "$BRANCH_SLUG" = "main" ]; then
+        error "Cannot clean the main branch's Docker config"
+    fi
+
+    COMPOSE_FILE="$DOCKER_DIR/compose.worktree.${BRANCH_SLUG}.yaml"
+    ENV_FILE="$DOCKER_DIR/.env.${BRANCH_SLUG}"
+
+    if [ -f "$COMPOSE_FILE" ]; then
+        info "Stopping containers for ${BRANCH_SLUG}..."
+        cd "$DOCKER_DIR"
+        ENV_OPT=""
+        [ -f "$ENV_FILE" ] && ENV_OPT="--env-file $ENV_FILE"
+        docker compose $COMPOSE_FILES $ENV_OPT --project-name "$PROJECT_NAME" down --remove-orphans 2>/dev/null || true
+    fi
+
+    info "Removing generated overlay files for ${BRANCH_SLUG}..."
+    rm -f "$COMPOSE_FILE" "$ENV_FILE"
+    success "Cleaned up Docker config for ${BRANCH_SLUG}"
     exit 0
 fi
 
