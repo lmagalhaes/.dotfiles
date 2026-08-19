@@ -1,20 +1,34 @@
 onboarding = false
 [ui]
-show_agent_labels_on_pane_borders = false
+show_agent_labels_on_pane_borders = true
 
 agent_panel_sort = "priority"
 [ui.sound]
-enabled = false
+enabled = true
 
 [theme]
 name = "tokyo-night"
-auto_switch = false
+
+# Follow host terminal light/dark appearance and switch Herdr UI themes.
+# Left off on purpose: on herdr 0.8.0 (stable) this relies on a host
+# color-scheme cache that doesn't refresh after the terminal's appearance
+# actually changes, so selected/active UI (workspace row, tab bar) gets
+# stuck on the old theme. Fixed upstream (herdr issues #2823/#2416,
+# PR #2417 merged to master) but not yet in a stable release as of
+# 2026-08-19 — only in preview builds from 2026-08-17 onward. Ghostty
+# does correctly answer the underlying CSI ?996n query the fix depends
+# on, so once a stable release ships it, auto_switch is worth revisiting.
+# Until then, bin/toggle-terminal-theme sets `name` directly per toggle,
+# which reloads through a different code path unaffected by this bug.
+# auto_switch = false
+# dark_name = "tokyo-night"
+# light_name = "one-light"
 
 
 [keys]
 
 [[keys.command]]
-key = "prefix+a"
+key = "prefix+t"
 type = "shell"
 command = "toggle-terminal-theme"
 description = "Toggle terminal mode (light/dark)"
@@ -42,3 +56,52 @@ key = "ctrl+l"
 type = "plugin_action"
 command = "vim-herdr-navigation.right"
 description = "navigate right (vim/herdr)"
+
+### Herdr-file-viewer
+[[keys.command]]
+key = "prefix+f"
+type = "plugin_action"
+command = "herdr-file-viewer.open-file-viewer"
+description = "open file viewer in split"
+
+[[keys.command]]
+key = "prefix+shift+f"
+type = "plugin_action"
+command = "herdr-file-viewer.open-file-viewer-tab"
+description = "open file viewer in tab"
+
+### herdr-last-workspace
+
+[[keys.command]]
+key = "prefix+tab"
+type = "plugin_action"
+command = "third774.last-workspace.toggle"
+description = "last workspace"
+
+### herdr-plus
+[[keys.command]]
+key = "prefix+up"
+type = "plugin_action"
+command = "cloudmanic.herdr-plus.projects"
+description = "herdr-plus: projects"
+
+[[keys.command]]
+key = "prefix+down"
+type = "plugin_action"
+command = "cloudmanic.herdr-plus.quick-actions"
+description = "herdr-plus: quick actions"
+
+### herdr sessionazer
+[[keys.command]]
+key = "prefix+j"
+type = "plugin_action"
+command = "sessionizer.open"
+description = "open project workspace"
+
+###
+
+[[keys.command]]
+key = "prefix+shift+j"
+type = "plugin_action"
+command = "lmagalhaes.projects-manager.open-projects"
+description = "Kinda list the open projects"

@@ -2,17 +2,19 @@
 # toggle-terminal-theme - Flip Ghostty + tmux between dark and light,
 # independent of macOS system Appearance.
 #
-# Rewrites the `theme =` line in ghostty/config (Tokyo Night Storm <-> Day),
-# updates tmux's catppuccin flavor (mocha <-> latte), and sets herdr's
-# theme.name directly (herdr's own auto_switch host-detection left some UI
-# surfaces like modals/menus on the old theme, so this sets it explicitly
-# instead and reloads).
+# Rewrites the `theme =` line in ghostty/config (Tokyo Night Storm <-> Atom
+# One Light — independent families, not tied to each other), updates
+# tmux's catppuccin flavor (mocha <-> latte), and sets herdr's
+# theme.name directly (see herdr/config.toml's [theme] comment: herdr's
+# auto_switch host-detection has a known caching bug on stable 0.8.0 that
+# leaves selected/active UI stuck on the old theme, so this sets the name
+# explicitly instead and reloads, which takes a different code path).
 #
 # Ghostty has no CLI/IPC reload hook, so this simulates its own
-# Cmd+Shift+, reload-config keybind via System Events. Requires this
-# terminal to be the frontmost app when run (true when triggered from a
-# tmux keybinding inside Ghostty), and macOS Accessibility permission —
-# granted via a one-time system prompt the first time it runs.
+# Cmd+Shift+, reload-config keybind via System Events. The keybind is
+# registered as `global:` in ghostty/config so it fires regardless of
+# which app is frontmost when this runs. Requires macOS Accessibility
+# permission — granted via a one-time system prompt the first time it runs.
 #
 # Usage:
 #   toggle-terminal-theme          # flip from current state
@@ -26,7 +28,7 @@ readonly TMUX_CONFIG="$XDG_CONFIG_HOME/tmux/tmux.conf"
 readonly HERDR_CONFIG="$HOME/.dotfiles/herdr/config.toml"
 
 current_mode() {
-    if grep -q '^theme = TokyoNight Day$' "$GHOSTTY_CONFIG"; then
+    if grep -q '^theme = Atom One Light$' "$GHOSTTY_CONFIG"; then
         echo "light"
     else
         echo "dark"
@@ -49,9 +51,9 @@ case "$target_mode" in
         herdr_theme="tokyo-night"
         ;;
     light)
-        ghostty_theme="TokyoNight Day"
+        ghostty_theme="Atom One Light"
         tmux_flavor="latte"
-        herdr_theme="tokyo-night-day"
+        herdr_theme="one-light"
         ;;
     *)
         echo "Usage: toggle-terminal-theme [dark|light]" >&2

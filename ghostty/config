@@ -2,6 +2,10 @@
 theme = TokyoNight Storm
 font-family = JetBrainsMono Nerd Font
 
+# Global reload_config keybind so bin/toggle-terminal-theme's simulated
+# keystroke reaches Ghostty even when it isn't the frontmost app.
+keybind = global:super+shift+,=reload_config
+
 # Keyboard overrides to match iTerm behavior
 
 # Shift+Fn+Right: jump to end of line
