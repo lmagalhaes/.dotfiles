@@ -1,0 +1,16 @@
+version: '3'
+
+# Global Taskfile — run from anywhere with `task -g <namespace>:<task>`.
+# Each entry centralizes one project's Taskfile under a namespace instead
+# of needing to cd into it first.
+#
+# dev-env/Taskfile.yml used to declare its own `dotenv:`, which Task
+# forbids in an included Taskfile -- that's why this used to dispatch via
+# `task -d <dir>` instead. dev-env dropped its dotenv declaration (it
+# loaded a local .env with no actual consumers), which unblocked a real
+# `includes:`.
+
+includes:
+  dev-env:
+    taskfile: /Users/lmagalhaes/workspace/workyard/dev-env/Taskfile.yml
+    dir: /Users/lmagalhaes/workspace/workyard/dev-env

@@ -27,7 +27,7 @@ cd "$DOTFILES"
 
 # Stow packages (target: $HOME)
 echo "Installing packages with stow..."
-PACKAGES=("bash")
+PACKAGES=("bash" "task")
 
 for package in "${PACKAGES[@]}"; do
   if [ -d "$package" ]; then
