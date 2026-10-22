@@ -31,6 +31,6 @@ npm-debug.log
 **/.claude/docs/
 
 # Local dev tooling (per-repo, not shared/committed)
-dev-scripts/
+dev-scripts
 .worktree-hooks/
 CLAUDE.local.md
