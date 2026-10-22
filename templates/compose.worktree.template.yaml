@@ -2,23 +2,26 @@
 # Generated for worktree: SLUG
 #
 # This file only contains what differs from compose.override.yaml:
-# - Unique container names (prevents collision with main or other worktrees)
+# - Unique container name (prevents collision with main or other worktrees)
 # - Traefik routing labels (per-branch hostname)
 #
 # Mount path and GIT_DIR are set via .env.SLUG (generated alongside this file).
 # Base service config (PHP, nginx, volumes, healthcheck) comes from compose.override.yaml.
+# nginx runs inside the workyard-api container (see nginx-php-fpm.conf mount in
+# compose.override.yaml) - there is no separate nginx service.
 #
 # Do not edit manually - regenerate with: git wt-docker init
 
 services:
-  nginx:
-    container_name: nginx-SLUG
-    labels:
+  workyard-api:
+    container_name: workyard-api-SLUG
+    hostname: api-SLUG.workyard.test
+    # !override replaces the main checkout's labels instead of merging with them.
+    # Merged, the container carries two Traefik services, so its routers can't
+    # link automatically, and it also claims api.workyard.test (owned by the
+    # active-api.yml alias) and joins the main `workyard-api` load balancer.
+    labels: !override
       - "traefik.enable=true"
       - "traefik.http.services.workyard-api-SLUG.loadbalancer.server.port=80"
       - "traefik.http.routers.workyard-api-SLUG.rule=Host(`api-SLUG.workyard.test`)"
       - "traefik.http.routers.workyard-api-SLUG.tls=true"
-
-  workyard-api:
-    container_name: workyard-api-SLUG
-    hostname: api-SLUG.workyard.test
