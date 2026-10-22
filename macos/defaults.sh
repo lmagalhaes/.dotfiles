@@ -224,6 +224,18 @@ defaults write com.apple.iCal "first day of week" -int 1
 defaults write com.apple.ActivityMonitor IconType -int 5
 
 ###############################################################################
+# Spotlight                                                                   #
+###############################################################################
+
+# MANUAL STEP: exclude ~/workspace from Spotlight indexing.
+# Constantly-changing files there (MySQL datadirs, vendor/, node_modules/,
+# worktrees) keep mds busy and add memory pressure. macOS has no supported
+# command for per-folder exclusions, so add it once per machine:
+#   System Settings → Spotlight → Search Privacy… → + → ~/workspace
+# Verify: `mdfind -onlyin ~/workspace .` returns nothing.
+echo "Manual step: exclude ~/workspace in System Settings → Spotlight → Search Privacy…"
+
+###############################################################################
 # Kill affected applications                                                  #
 ###############################################################################
 
