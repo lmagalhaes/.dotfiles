@@ -16,7 +16,8 @@ if [ $# -eq 0 ] || [ "$1" = "-h" ] || [ "$1" = "--help" ]; then
     echo ""
     echo "Arguments:"
     echo "  branch-name   Name of the branch to create (e.g., WORK-123-feature)"
-    echo "  base-branch   Base branch to branch from (default: main)"
+    echo "  base-branch   Base branch to branch from (default: main). For a new"
+    echo "                branch it is first fast-forwarded to origin/<base-branch>."
     echo ""
     echo "Examples:"
     echo "  git worktree-create WORK-123-oauth-integration"
@@ -53,6 +54,44 @@ if git show-ref --verify --quiet "refs/heads/$BRANCH_NAME"; then
 else
     info "Creating new branch '$BRANCH_NAME' from '$BASE_BRANCH'"
     BRANCH_EXISTS=false
+fi
+
+# Path of the worktree that has the given branch checked out, if any
+find_checkout_of_branch() {
+    git worktree list --porcelain | awk -v ref="branch refs/heads/$1" '
+        /^worktree / { path = substr($0, 10) }
+        $0 == ref { print path; exit }
+    '
+}
+
+# Fast-forward the base branch to origin so new worktrees (and their
+# post-create hook) start from current code. Never rewrites local history.
+sync_base_branch() {
+    local base="$1"
+    local checkout
+
+    if ! git ls-remote --exit-code --heads origin "$base" >/dev/null 2>&1; then
+        warning "No 'origin/$base' found, branching from local '$base'"
+        return
+    fi
+
+    info "Syncing '$base' with 'origin/$base'"
+    git fetch --quiet origin "$base" || error "Failed to fetch 'origin/$base'"
+
+    checkout=$(find_checkout_of_branch "$base")
+    if [ -z "$checkout" ]; then
+        git fetch --quiet origin "$base:$base" || error "'$base' has diverged from 'origin/$base', resolve it first"
+        success "'$base' is up to date"
+        return
+    fi
+
+    git -C "$checkout" merge --ff-only --quiet "origin/$base" \
+        || error "Can't fast-forward '$base' in $checkout (diverged or local changes in the way), resolve it first"
+    success "'$base' is up to date (checkout at $checkout updated)"
+}
+
+if [ "$BRANCH_EXISTS" = false ]; then
+    sync_base_branch "$BASE_BRANCH"
 fi
 
 # Create .worktrees directory if it doesn't exist
