@@ -30,3 +30,10 @@ path_append() {
         *) PATH="${PATH:+$PATH:}$dir" ;;
     esac
 }
+
+load_workspaces() {
+    local init_file
+    for init_file in "$HOME"/workspace/*/.dotfiles/init.bash; do
+        source_if_exists "$init_file"
+    done
+}

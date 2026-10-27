@@ -16,6 +16,7 @@ source_if_exists "$HOME/.bash/keys.sh"
 path_prepend "$HOME/workspace/lmagalhaes/bin"
 path_prepend "$HOME/bin"
 path_prepend "$DOTFILES_PATH/bin"
+load_workspaces
 path_prepend "$HOMEBREW_PREFIX/opt/libpq/bin"
 path_prepend "$HOMEBREW_PREFIX/opt/gnu-sed/libexec/gnubin"
 path_prepend "$HOMEBREW_PREFIX/opt/mysql-client@8.4/bin"

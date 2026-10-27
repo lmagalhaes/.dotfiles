@@ -65,6 +65,37 @@ GNU Stow creates symlinks from package directories to your home directory. Each 
 └── macos/                  # macOS-specific settings
 ```
 
+## Workspace Dotfiles
+
+Shell setup that belongs to one workspace (a company or personal area under
+`~/workspace/`) lives in that workspace, not here. This repo is public; company
+tooling stays out of it.
+
+```
+~/workspace/<workspace>/.dotfiles/
+├── bin/          # Workspace scripts
+└── init.bash     # Sourced by .bashrc for every shell
+```
+
+`load_workspaces` (in `bash/bash_helpers`, called from `.bashrc`) sources every
+`~/workspace/*/.dotfiles/init.bash`. Each workspace decides what its `init.bash`
+does — typically:
+
+```bash
+# shellcheck shell=bash
+path_prepend "${BASH_SOURCE[0]%/*}/bin"
+alias wy='cd $HOME/workspace/workyard/'
+```
+
+Rules:
+- `init.bash` runs in non-interactive shells too — keep it fast and side-effect
+  free; guard interactive-only setup (completions, `bind`, `eval "$(tool init)"`)
+  with `[[ $- == *i* ]]`
+- Helpers from `bash/bash_helpers` are available (`path_prepend`,
+  `source_if_exists`, `command_exists`)
+- Workspaces without `.dotfiles/init.bash` are skipped
+- Not versioned: workspace dotfiles are local to the machine
+
 ## Managing Packages
 
 All commands should be run from `~/.dotfiles/`:
