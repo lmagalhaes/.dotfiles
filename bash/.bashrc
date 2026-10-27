@@ -2,8 +2,8 @@
 
 DOTFILES_PATH="${DOTFILES_PATH:-$HOME/.dotfiles}"
 
-# shellcheck source=.bash_helpers
-source "$DOTFILES_PATH/bash/.bash_helpers"
+# shellcheck source=bash_helpers
+source "$DOTFILES_PATH/bash/bash_helpers"
 
 if [[ -x /opt/homebrew/bin/brew ]]; then
     eval "$(/opt/homebrew/bin/brew shellenv)"
