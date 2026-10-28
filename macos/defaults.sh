@@ -224,6 +224,22 @@ defaults write com.apple.iCal "first day of week" -int 1
 defaults write com.apple.ActivityMonitor IconType -int 5
 
 ###############################################################################
+# Touch ID for sudo                                                           #
+###############################################################################
+
+# /etc/pam.d/sudo_local survives macOS updates (unlike /etc/pam.d/sudo).
+# pam_reattach (brew "pam-reattach") makes Touch ID work inside tmux/herdr;
+# only reference it when installed — a missing PAM module can break sudo.
+pam_reattach="$(brew --prefix 2>/dev/null)/lib/pam/pam_reattach.so"
+{
+  echo "# Managed by ~/.dotfiles/macos/defaults.sh"
+  if [[ -f "$pam_reattach" ]]; then
+    echo "auth       optional       $pam_reattach ignore_ssh"
+  fi
+  echo "auth       sufficient     pam_tid.so"
+} | sudo tee /etc/pam.d/sudo_local >/dev/null
+
+###############################################################################
 # Spotlight                                                                   #
 ###############################################################################
 
