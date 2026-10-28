@@ -72,6 +72,5 @@ The authored source lives in `~/.assistant-config/claude/`. It holds rules, skil
 ### macos/
 
 - `defaults.sh` — applies macOS system defaults (Finder, trackpad, etc.)
-- `install.sh` — one-time machine bootstrap (timezone, dock, etc.)
 
 These are run manually, not via stow.
