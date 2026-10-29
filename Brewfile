@@ -24,8 +24,6 @@ brew "php"
 brew "composer"
 # GNU File, Shell, and Text utilities
 brew "coreutils"
-# Reimplementation of ctags(1)
-brew "ctags"
 # Process manager for dev and prod
 brew "dekit"
 # Tool for exploring each layer in a docker image
@@ -66,8 +64,6 @@ brew "gnupg"
 brew "go-task"
 # Agent multiplexer that lives in your terminal
 brew "herdr"
-# Improved top (interactive process viewer)
-brew "htop"
 # Tools and libraries to manipulate images in select formats
 brew "imagemagick"
 # Image manipulation library
@@ -84,8 +80,6 @@ brew "mkcert"
 brew "mysql-client@8.4"
 # Port scanning utility for large networks
 brew "nmap"
-# SSL/TLS VPN implementing OSI layer 2 or 3 secure network extension
-brew "openvpn"
 # PAM module for reattaching to the user's GUI (Aqua) session
 brew "pam-reattach"
 # Swiss-army knife of markup format conversion
@@ -120,12 +114,12 @@ brew "step"
 brew "stow"
 # User interface to the TELNET protocol
 brew "telnet"
-# Static analysis security scanner for your terraform code
-brew "tfsec"
 # Terminal multiplexer
 brew "tmux"
 # Display directories as trees (with optional color/HTML output)
 brew "tree"
+# Maintained ctags implementation
+brew "universal-ctags"
 # Vi 'workalike' with many additional features
 brew "vim"
 # Executes a program periodically, showing output fullscreen
@@ -134,10 +128,6 @@ brew "watch"
 brew "watchexec"
 # Internet file retriever
 brew "wget"
-# Library to create, extract, and modify Windows Imaging files
-brew "wimlib"
-# JavaScript package manager
-brew "yarn"
 # Process YAML, JSON, XML, CSV and properties documents from the CLI
 brew "yq"
 # Suite of barcodes-reading tools
@@ -148,8 +138,6 @@ brew "zoxide"
 brew "getsentry/tools/sentry-cli", trusted: true
 # Desktop password and login vault
 cask "bitwarden"
-# Web debugging Proxy application
-cask "charles"
 # OpenAI's official ChatGPT desktop app
 cask "chatgpt"
 # Terminal-based AI coding assistant
@@ -179,8 +167,6 @@ cask "linear"
 cask "meld"
 # Interactive JavaScript, Python or SQL interface
 cask "mysql-shell"
-# Visual tool to design, develop and administer MySQL servers
-cask "mysqlworkbench"
 # Knowledge base that works on top of a local folder of plain text Markdown files
 cask "obsidian"
 # Client program for the OpenVPN Access Server
@@ -197,7 +183,5 @@ cask "sequel-ace"
 cask "signal"
 # Team communication and collaboration software
 cask "slack"
-# Native GUI tool for relational databases
-cask "tableplus"
 # Native desktop client for WhatsApp
 cask "whatsapp"
