@@ -62,7 +62,7 @@ HISTCONTROL=ignoreboth:erasedups
 HISTTIMEFORMAT='%F %T  '
 
 if command_exists keychain; then
-    eval "$(keychain -q --timeout 480 --eval ~/.ssh/id_ed25519 ~/.ssh/id_rsa)"
+    eval "$(keychain -q --noask --eval)"
 fi
 
 if [[ -r "$HOMEBREW_PREFIX/etc/profile.d/bash_completion.sh" ]]; then
