@@ -23,11 +23,30 @@ MANAGED="$HOME/.claude/authored/settings.managed.json"
 TARGET="$HOME/.claude/settings.json"
 FORCE=false
 
+usage() {
+  cat <<'EOF'
+usage: render-claude-settings.sh [--force]
+
+Renders ~/.claude/authored/settings.managed.json into ~/.claude/settings.json.
+Top-level keys in the template replace the live ones; other live keys are kept.
+
+Refuses to render when that would remove a deny rule or hook the live file has,
+and lists them. Allow rules are not guarded.
+
+  --force     render anyway, and list what was removed
+  -h, --help  show this help
+EOF
+}
+
 case "${1:-}" in
   "") ;;
   --force) FORCE=true ;;
+  -h | --help)
+    usage
+    exit 0
+    ;;
   *)
-    echo "usage: render-claude-settings.sh [--force]" >&2
+    usage >&2
     exit 2
     ;;
 esac

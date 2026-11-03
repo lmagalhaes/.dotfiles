@@ -101,8 +101,30 @@ _render() {
 @test "renders nothing when given an unknown argument" {
   cp "$LIVE" "$FAKE_HOME/before.json"
   _template '.permissions.deny += ["Bash(*.netrc*)"]'
+  _render --bogus
+  cmp "$LIVE" "$FAKE_HOME/before.json"
+}
+
+@test "fails when given an unknown argument" {
+  _render --bogus
+  [ "$status" -eq 2 ]
+}
+
+@test "renders nothing with --help" {
+  cp "$LIVE" "$FAKE_HOME/before.json"
+  _template '.permissions.deny += ["Bash(*.netrc*)"]'
   _render --help
   cmp "$LIVE" "$FAKE_HOME/before.json"
+}
+
+@test "--help explains --force" {
+  _render --help
+  [[ "$output" == *"--force"*"render anyway"* ]]
+}
+
+@test "-h succeeds" {
+  _render -h
+  [ "$status" -eq 0 ]
 }
 
 @test "renders when only an allow rule would be dropped" {
