@@ -3,7 +3,10 @@
 # Managed keys win at every top-level key they define; unknown runtime keys
 # (e.g. feedbackSurveyState) are preserved from the existing target.
 # Nested keys (permissions, hooks, enabledPlugins) are owned by managed and
-# replaced wholesale - user-approved permissions belong in settings.local.json.
+# replaced wholesale - global permissions belong in settings.managed.json.
+# Approvals given with "don't ask again" land in each project's own
+# .claude/settings.local.json; ~/.claude/settings.local.json is not a
+# user-scope file (it applies only to sessions started in $HOME).
 #
 # Because of that, a render from a checkout that is behind (or a template
 # that lost a rule by mistake) would silently drop live protections. So it
