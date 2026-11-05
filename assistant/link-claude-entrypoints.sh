@@ -70,9 +70,14 @@ echo "  source: $AUTHORED_DIR"
 
 link "authored" "$AUTHORED_DIR"
 link "CLAUDE.md" "authored/CLAUDE.md"
-link "RTK.md" "authored/RTK.md"
 link "rules" "authored/rules"
 link "skills" "authored/skills"
+
+# RTK.md moved to authored/docs/rtk.md and is no longer loaded.
+if [ -L "$CLAUDE_DIR/RTK.md" ]; then
+  rm "$CLAUDE_DIR/RTK.md"
+  echo "  removed stale ~/.claude/RTK.md"
+fi
 
 # hooks/ and tooling/ are intentionally accessed via ~/.claude/authored/...,
 # not projected as top-level runtime namespaces.
