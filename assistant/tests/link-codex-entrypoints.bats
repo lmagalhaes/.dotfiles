@@ -10,6 +10,9 @@ setup() {
   SHARED="$FAKE_HOME/.assistant-config/shared/AGENTS.md"
   mkdir -p "$(dirname "$SHARED")"
   echo "shared instructions" >"$SHARED"
+  RULES="$FAKE_HOME/.assistant-config/codex/rules/git-guard.rules"
+  mkdir -p "$(dirname "$RULES")"
+  echo "# rules" >"$RULES"
   export CODEX_HOME="$FAKE_HOME/codex-home"
 }
 
@@ -82,4 +85,35 @@ _link() {
   echo "override" >"$CODEX_HOME/AGENTS.override.md"
   _link
   [[ "$output" == *"AGENTS.override.md"* ]]
+}
+
+@test "links the git-guard rules into Codex's rules dir" {
+  _link
+  [ "$(readlink "$CODEX_HOME/rules/git-guard.rules")" = "$RULES" ]
+}
+
+@test "leaves Codex's own default.rules untouched" {
+  mkdir -p "$CODEX_HOME/rules"
+  echo "approvals" >"$CODEX_HOME/rules/default.rules"
+  _link
+  [ "$(cat "$CODEX_HOME/rules/default.rules")" = "approvals" ]
+}
+
+@test "still links AGENTS.md while the rules file doesn't exist" {
+  rm "$RULES"
+  _link
+  [ "$(readlink "$CODEX_HOME/AGENTS.md")" = "$SHARED" ]
+}
+
+@test "creates no dangling rules link while the rules file doesn't exist" {
+  rm "$RULES"
+  _link
+  [ ! -L "$CODEX_HOME/rules/git-guard.rules" ]
+}
+
+@test "refuses to replace a real git-guard.rules" {
+  mkdir -p "$CODEX_HOME/rules"
+  echo "hand-written" >"$CODEX_HOME/rules/git-guard.rules"
+  _link
+  [ "$status" -ne 0 ]
 }
