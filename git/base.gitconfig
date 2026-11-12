@@ -25,6 +25,8 @@
 
 [core]
     pager = less -FRX
+    # Cache untracked-file scans in the index; git status skips unchanged dirs
+    untrackedCache = true
 
 [color]
     ui = auto
