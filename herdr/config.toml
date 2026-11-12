@@ -1,10 +1,11 @@
 onboarding = false
+
 [ui]
 show_agent_labels_on_pane_borders = true
+tab_bar_position = "bottom"
 
-agent_panel_sort = "priority"
 [ui.sound]
-enabled = true
+enabled = false
 
 [theme]
 name = "tokyo-night"
@@ -93,7 +94,7 @@ description = "herdr-plus: quick actions"
 
 ### herdr sessionazer
 [[keys.command]]
-key = "prefix+j"
+key = "prefix+shift+j"
 type = "plugin_action"
 command = "sessionizer.open"
 description = "open project workspace"
@@ -101,7 +102,7 @@ description = "open project workspace"
 ###
 
 [[keys.command]]
-key = "prefix+shift+j"
+key = "prefix+j"
 type = "plugin_action"
 command = "lmagalhaes.projects-manager.open-projects"
 description = "Kinda list the open projects"
