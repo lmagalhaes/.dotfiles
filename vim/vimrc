@@ -151,4 +151,22 @@ Plug 'junegunn/fzf.vim'
 Plug 'christoomey/vim-tmux-navigator'
 call plug#end()
 
-source $XDG_CONFIG_HOME/herdr/plugins/github/vim-herdr-navigation-a8bf42123d81/editor/vim.vim
+" herdr installs each plugin update in a new directory, so look up the
+" current one in its plugin registry instead of hardcoding the path.
+function! s:HerdrPluginRoot(plugin_id) abort
+    let l:registry = $XDG_CONFIG_HOME . '/herdr/plugins.json'
+    if !filereadable(l:registry)
+        return ''
+    endif
+    for l:plugin in json_decode(join(readfile(l:registry), "\n"))
+        if get(l:plugin, 'plugin_id', '') ==# a:plugin_id
+            return get(l:plugin, 'plugin_root', '')
+        endif
+    endfor
+    return ''
+endfunction
+
+let s:herdr_navigation = s:HerdrPluginRoot('vim-herdr-navigation') . '/editor/vim.vim'
+if filereadable(s:herdr_navigation)
+    execute 'source' fnameescape(s:herdr_navigation)
+endif
