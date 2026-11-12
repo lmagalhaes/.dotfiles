@@ -35,6 +35,26 @@ setup() {
   [ "$output" = "$REPO" ]
 }
 
+@test "labels a worktree with its branch when they differ" {
+  run --separate-stderr "$SCRIPT"
+  [ "$(picker_label prt-3038-record-webhooks | tr -s ' ')" = "prt-3038-record-webhooks PRT-3038-cost-code-events" ]
+}
+
+@test "leaves the branch out when it only repeats the folder name" {
+  run --separate-stderr "$SCRIPT"
+  [ "$(picker_label prt-4100-invoice-export)" = "prt-4100-invoice-export" ]
+}
+
+@test "aligns branches in one column" {
+  _add_worktree "feature-x" "fx"
+
+  run --separate-stderr "$SCRIPT"
+  short_label=$(picker_label fx)
+  long_label=$(picker_label prt-3038-record-webhooks)
+  long_prefix="${long_label%%PRT-3038*}"
+  [ "${short_label%%feature-x*}" = "$(printf '%-*s' "${#long_prefix}" fx)" ]
+}
+
 @test "selects an exact folder name without opening the picker" {
   FZF_STUB_CANCEL=1 run --separate-stderr "$SCRIPT" prt-4100-invoice-export
   [ "$output" = "$REPO/.worktrees/prt-4100-invoice-export" ]

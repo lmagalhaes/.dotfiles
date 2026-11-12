@@ -79,6 +79,26 @@ list_worktree_rows() {
     done < <(list_worktree_paths_and_branches)
 }
 
+# Prefix each row with the label the picker shows: folder names padded so
+# branches line up, branches dimmed, and left out when they only repeat the
+# folder name
+add_picker_labels() {
+    awk -F '\t' -v dim="$GRAY" -v reset="$NC" '
+        {
+            row[NR] = $0; name[NR] = $1; branch[NR] = $2
+            if (length($1) > width) width = length($1)
+        }
+        END {
+            for (i = 1; i <= NR; i++) {
+                label = name[i]
+                if (tolower(branch[i]) != tolower(name[i]))
+                    label = sprintf("%-" width "s  %s%s%s", name[i], dim, branch[i], reset)
+                print label "\t" row[i]
+            }
+        }
+    '
+}
+
 find_row_by_name() {
     local name="$1"
 
@@ -96,8 +116,10 @@ pick_worktree_row() {
         return
     fi
     list_worktree_rows |
-        fzf --height ~40% --layout reverse --delimiter '\t' --with-nth 1,2 \
-            --query "$query" --select-1 --exit-0
+        add_picker_labels |
+        fzf --ansi --height ~40% --layout reverse --delimiter '\t' --with-nth 1 \
+            --query "$query" --select-1 --exit-0 |
+        cut -f 2-
 }
 
 main() {

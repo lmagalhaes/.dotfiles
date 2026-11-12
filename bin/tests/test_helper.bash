@@ -22,11 +22,13 @@ _add_worktree() {
   git -C "$REPO" worktree add -q -b "$branch" "$REPO/.worktrees/$folder" main
 }
 
-# Fake fzf: selects the first row whose name or branch (fields 1 and 2)
-# contains --query, ignoring case. FZF_STUB_CANCEL=1 simulates Esc.
+# Fake fzf: selects the first row whose label (field 1, what the picker
+# shows) contains --query, ignoring case, and records its input in
+# $FZF_STUB_INPUT. FZF_STUB_CANCEL=1 simulates Esc.
 stub_fzf() {
   local stubs="$TEST_ROOT/stubs"
   mkdir -p "$stubs"
+  export FZF_STUB_INPUT="$TEST_ROOT/fzf-input"
   cat > "$stubs/fzf" <<'STUB'
 #!/usr/bin/env bash
 query=""
@@ -34,16 +36,24 @@ while (( $# )); do
   [[ "$1" == "--query" ]] && query="$2"
   shift
 done
+tee "$FZF_STUB_INPUT" > /dev/null
 [[ -n "${FZF_STUB_CANCEL:-}" ]] && exit 130
 shopt -s nocasematch
-while IFS=$'\t' read -r name branch path; do
-  if [[ "$name" == *"$query"* || "$branch" == *"$query"* ]]; then
-    printf '%s\t%s\t%s\n' "$name" "$branch" "$path"
+while IFS=$'\t' read -r label rest; do
+  if [[ "$label" == *"$query"* ]]; then
+    printf '%s\t%s\n' "$label" "$rest"
     exit 0
   fi
-done
+done < "$FZF_STUB_INPUT"
 exit 1
 STUB
   chmod +x "$stubs/fzf"
   PATH="$stubs:$PATH"
+}
+
+# The label the picker showed for a worktree folder, colours stripped
+picker_label() {
+  local name="$1"
+  sed -E $'s/\033\\[[0-9;]*m//g' "$FZF_STUB_INPUT" |
+    awk -F '\t' -v name="$name" '$2 == name { print $1 }'
 }
