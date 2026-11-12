@@ -1,6 +1,7 @@
 # theme = Cobalt Next
 theme = TokyoNight Storm
-font-family = JetBrainsMono Nerd Font
+font-family = AtkynsonMono Nerd Font
+font-size = 14
 
 # Global reload_config keybind so bin/toggle-terminal-theme's simulated
 # keystroke reaches Ghostty even when it isn't the frontmost app.
