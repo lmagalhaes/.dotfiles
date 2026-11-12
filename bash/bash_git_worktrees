@@ -1,0 +1,25 @@
+# shellcheck shell=bash
+# Interactive git wrapper: `git wt-use` changes the current shell's directory,
+# which the git alias can't do since it runs in a child process. Every other
+# git command passes straight through.
+
+git() {
+    case "${1:-}" in
+        wt-use) _git_worktree_cd "${@:2}" ;;
+        *) command git "$@" ;;
+    esac
+}
+
+_git_worktree_cd() {
+    # These print text, not a path
+    case "${1:-}" in
+        -h|--help|--print-name)
+            command git-worktree-use "$@"
+            return
+            ;;
+    esac
+
+    local worktree_path
+    worktree_path=$(command git-worktree-use "$@") || return
+    cd "$worktree_path" || return
+}

@@ -76,6 +76,8 @@ fi
 source_if_exists "$HOME/.aliases"
 source_if_exists "$HOMEBREW_PREFIX/etc/bash_completion.d/git-prompt.sh"
 source_if_exists "${XDG_DATA_HOME:-$HOME/.local/share}/bash-completion/completions/git-worktree-completion.bash"
+# shellcheck source=bash_git_worktrees
+source "$DOTFILES_PATH/bash/bash_git_worktrees"
 
 source "$DOTFILES_PATH/bash/bash_ps1"
 
