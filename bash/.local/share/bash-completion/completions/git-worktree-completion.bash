@@ -87,6 +87,33 @@ _git_wt_rm() {
     mapfile -t COMPREPLY < <(compgen -W "$branches" -- "$cur")
 }
 
+# For git alias: git wt-use <TAB>
+# Opens the worktree picker inline, filtered by the word typed so far, and
+# puts the picked worktree's folder name on the command line
+_git_wt_use() {
+    local cur="${COMP_WORDS[COMP_CWORD]}"
+    local prev="${COMP_WORDS[COMP_CWORD-1]}"
+
+    # Only the first argument is a worktree
+    if [[ "$prev" != "wt-use" ]]; then
+        return
+    fi
+
+    local name
+    name=$(git-worktree-use --print-name "$cur" 2>/dev/null) || name=""
+    _git_worktree_redraw_prompt
+
+    # Keep the typed word on cancel so bash doesn't fall back to file names
+    COMPREPLY=("${name:-$cur}")
+}
+
+# fzf draws over the prompt; ask the terminal for a status report and let
+# readline redraw the line when it answers (same trick as fzf's ** completion)
+_git_worktree_redraw_prompt() {
+    bind '"\e[0n": redraw-current-line' 2>/dev/null
+    printf '\e[5n'
+}
+
 # For git alias: git wt-cleanup <TAB>
 # Complete with options: --dry-run, --all
 _git_wt_cleanup() {

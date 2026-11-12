@@ -1,22 +1,27 @@
 #!/usr/bin/env bash
 # git-worktree-use - Pick a worktree with fzf and print its path
 #
-# Usage: git worktree-use [query]
+# Usage: git worktree-use [--print-name] [query]
 
 # Source common functions and variables
 source "$(dirname "$0")/git-worktree-common"
 
 readonly MAIN_CHECKOUT_NAME="main"
 readonly FZF_NO_MATCH=1
+readonly NAME_FIELD=1
+readonly PATH_FIELD=3
 
 show_help() {
-    echo "Usage: git worktree-use [query]"
+    echo "Usage: git worktree-use [--print-name] [query]"
     echo ""
     echo "Pick a git worktree with fzf and print its path."
     echo ""
     echo "Matches on the worktree folder name and its branch name; the main"
-    echo "checkout is listed as '$MAIN_CHECKOUT_NAME'. A single match is selected"
-    echo "without opening the picker."
+    echo "checkout is listed as '$MAIN_CHECKOUT_NAME'. An exact folder name or a"
+    echo "single match is selected without opening the picker."
+    echo ""
+    echo "Options:"
+    echo "  --print-name   Print the folder name instead of the path (tab completion)"
     echo ""
     echo "Examples:"
     echo "  git wt-use"
@@ -74,22 +79,42 @@ list_worktree_rows() {
     done < <(list_worktree_paths_and_branches)
 }
 
+find_row_by_name() {
+    local name="$1"
+
+    list_worktree_rows | awk -F '\t' -v name="$name" '$1 == name && !found { print; found = 1 }'
+}
+
+# An exact folder name (what tab completion inserts) skips the picker
 pick_worktree_row() {
     local query="$1"
+    local exact_row
+    exact_row=$(find_row_by_name "$query")
 
+    if [[ -n "$exact_row" ]]; then
+        echo "$exact_row"
+        return
+    fi
     list_worktree_rows |
-        fzf --delimiter '\t' --with-nth 1,2 --query "$query" --select-1 --exit-0
+        fzf --height ~40% --layout reverse --delimiter '\t' --with-nth 1,2 \
+            --query "$query" --select-1 --exit-0
 }
 
 main() {
-    if [[ "${1:-}" == "-h" || "${1:-}" == "--help" ]]; then
-        show_help
-        exit 0
-    fi
+    local query=""
+    local output_field="$PATH_FIELD"
+
+    while (( $# )); do
+        case "$1" in
+            -h|--help) show_help; exit 0 ;;
+            --print-name) output_field="$NAME_FIELD" ;;
+            *) query="$1" ;;
+        esac
+        shift
+    done
 
     check_git_repo
 
-    local query="${1:-}"
     local selected_row
     local pick_status=0
     selected_row=$(pick_worktree_row "$query") || pick_status=$?
@@ -101,8 +126,8 @@ main() {
         exit "$pick_status"
     fi
 
-    # The path is the last field; fzf draws on the tty, so stdout holds only this
-    echo "${selected_row##*$'\t'}"
+    # fzf draws on the tty, so stdout holds only the selected field
+    cut -f "$output_field" <<< "$selected_row"
 }
 
 main "$@"
