@@ -169,10 +169,14 @@ _set_ps1_modern() {
         branch=$(git symbolic-ref --short HEAD 2>/dev/null) ||
             branch=$(git rev-parse --short HEAD 2>/dev/null)
         if [[ -n "$branch" ]]; then
-            git diff --quiet 2>/dev/null          || flags_str+="${git_unstaged}*${NC}"
-            git diff --cached --quiet 2>/dev/null || flags_str+="${git_staged}+${NC}"
-            [ -n "$(git ls-files --others --exclude-standard 2>/dev/null)" ] \
-                                                  && flags_str+="${git_untracked}?${NC}"
+            # One status call, fast with core.fsmonitor + core.untrackedCache;
+            # no optional locks, so it never blocks git running elsewhere.
+            # Porcelain lines start "XY": Y = unstaged, X = staged, ?? = untracked
+            local changes
+            changes=$'\n'"$(git --no-optional-locks status --porcelain 2>/dev/null)"
+            [[ "$changes" == *$'\n'?[MTADRCU]* ]] && flags_str+="${git_unstaged}*${NC}"
+            [[ "$changes" == *$'\n'[MTADRCU]* ]]  && flags_str+="${git_staged}+${NC}"
+            [[ "$changes" == *$'\n''??'* ]]       && flags_str+="${git_untracked}?${NC}"
             git rev-parse --verify refs/stash >/dev/null 2>&1 \
                                                   && flags_str+="${git_stash}%${NC}"
             local git_str="${white}${BRANCH} ${branch}${NC}"
