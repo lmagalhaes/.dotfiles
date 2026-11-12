@@ -88,8 +88,9 @@ _git_wt_rm() {
 }
 
 # For git alias: git wt-use <TAB>
-# Opens the worktree picker inline, filtered by the word typed so far, and
-# puts the picked worktree's folder name on the command line
+# Opens the worktree picker inline, filtered by the word typed so far. A pick
+# puts the folder name on the command line and runs it, so one Enter in the
+# picker lands you in the worktree
 _git_wt_use() {
     local cur="${COMP_WORDS[COMP_CWORD]}"
     local prev="${COMP_WORDS[COMP_CWORD-1]}"
@@ -101,17 +102,36 @@ _git_wt_use() {
 
     local name
     name=$(git-worktree-use --print-name "$cur" 2>/dev/null) || name=""
-    _git_worktree_redraw_prompt
 
-    # Keep the typed word on cancel so bash doesn't fall back to file names
-    COMPREPLY=("${name:-$cur}")
+    if [[ -z "$name" ]]; then
+        # Keep the typed word on cancel so bash doesn't fall back to file names
+        COMPREPLY=("$cur")
+        _git_worktree_after_picker redraw
+        return
+    fi
+    COMPREPLY=("$name")
+    _git_worktree_after_picker run
 }
 
-# fzf draws over the prompt; ask the terminal for a status report and let
-# readline redraw the line when it answers (same trick as fzf's ** completion)
-_git_worktree_redraw_prompt() {
-    bind '"\e[0n": redraw-current-line' 2>/dev/null
+# fzf draws over the prompt. Printing \e[5n asks the terminal for a status
+# report, which it types back as \e[0n once the completion has returned, and
+# readline acts on that reply: "redraw" repaints the line (as fzf's **
+# completion does); "run" first resets the reply to redraw-only via
+# Ctrl-X Ctrl-], then presses Enter
+_git_worktree_after_picker() {
+    local action="$1"
+
+    bind -x '"\C-x\C-]": _git_worktree_reset_status_reply' 2>/dev/null
+    if [[ "$action" == "run" ]]; then
+        bind '"\e[0n": "\C-x\C-]\C-m"' 2>/dev/null
+    else
+        _git_worktree_reset_status_reply
+    fi
     printf '\e[5n'
+}
+
+_git_worktree_reset_status_reply() {
+    bind '"\e[0n": redraw-current-line' 2>/dev/null
 }
 
 # For git alias: git wt-cleanup <TAB>

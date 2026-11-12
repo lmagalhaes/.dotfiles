@@ -12,7 +12,20 @@ setup() {
   stub_fzf
   PATH="$BIN_DIR:$PATH"
   source "$COMPLETION"
+  _stub_bind
   cd "$REPO"
+}
+
+# Readline isn't active under bats; record what gets bound instead
+_stub_bind() {
+  BIND_CALLS="$TEST_ROOT/bind-calls"
+  : > "$BIND_CALLS"
+  bind() { printf '%s\n' "$*" >> "$BIND_CALLS"; }
+}
+
+# What the terminal's status reply (\e[0n) was last bound to
+_status_reply_binding() {
+  grep -F '"\e[0n":' "$BIND_CALLS" | tail -1
 }
 
 _complete_wt_use() {
@@ -35,4 +48,14 @@ _complete_wt_use() {
 @test "does not complete a second argument" {
   _complete_wt_use prt-4100-invoice-export cost-code
   [ "${#COMPREPLY[@]}" -eq 0 ]
+}
+
+@test "after a pick, the terminal's status reply runs the line" {
+  _complete_wt_use cost-code
+  [ "$(_status_reply_binding)" = '"\e[0n": "\C-x\C-]\C-m"' ]
+}
+
+@test "after a cancel, the terminal's status reply only redraws the line" {
+  FZF_STUB_CANCEL=1 _complete_wt_use 41
+  [ "$(_status_reply_binding)" = '"\e[0n": redraw-current-line' ]
 }
