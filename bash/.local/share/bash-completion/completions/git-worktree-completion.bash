@@ -88,15 +88,32 @@ _git_wt_rm() {
 }
 
 # For git alias: git wt-use <TAB>
+_git_wt_use() {
+    _git_worktree_complete_name wt-use
+}
+
+# For git alias: git wt-claude <TAB>
+# Options, or the worktree picker as for wt-use. git's completion runs with
+# -o nospace, so options carry their own trailing space
+_git_wt_claude() {
+    local cur="${COMP_WORDS[COMP_CWORD]}"
+    local options="--continue --load --prompt --current -h --help"
+
+    if [[ "$cur" == -* ]]; then
+        mapfile -t COMPREPLY < <(compgen -W "$options" -S ' ' -- "$cur")
+        return
+    fi
+    _git_worktree_complete_name wt-claude
+}
+
 # Opens the worktree picker inline, filtered by the word typed so far. A pick
 # puts the folder name on the command line and runs it, so one Enter in the
 # picker lands you in the worktree
-_git_wt_use() {
+_git_worktree_complete_name() {
+    local subcommand="$1"
     local cur="${COMP_WORDS[COMP_CWORD]}"
-    local prev="${COMP_WORDS[COMP_CWORD-1]}"
 
-    # Only the first argument is a worktree
-    if [[ "$prev" != "wt-use" ]]; then
+    if ! _git_worktree_expects_name "$subcommand"; then
         return
     fi
 
@@ -111,6 +128,26 @@ _git_wt_use() {
     fi
     COMPREPLY=("$name")
     _git_worktree_after_picker run
+}
+
+# The worktree is the first argument that isn't an option (or --prompt's text)
+_git_worktree_expects_name() {
+    local subcommand="$1"
+    local index word
+
+    if [[ "${COMP_WORDS[COMP_CWORD-1]}" == "--prompt" ]]; then
+        return 1
+    fi
+    for (( index = COMP_CWORD - 1; index > 0; index-- )); do
+        word="${COMP_WORDS[index]}"
+        if [[ "$word" == "$subcommand" ]]; then
+            return 0
+        fi
+        if [[ "$word" != -* ]]; then
+            return 1
+        fi
+    done
+    return 1
 }
 
 # fzf draws over the prompt. Printing \e[5n asks the terminal for a status

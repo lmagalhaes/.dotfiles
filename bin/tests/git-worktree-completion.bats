@@ -35,6 +35,13 @@ _complete_wt_use() {
   _git_wt_use > /dev/null
 }
 
+_complete_wt_claude() {
+  COMP_WORDS=(git wt-claude "$@")
+  COMP_CWORD=$(( ${#COMP_WORDS[@]} - 1 ))
+  COMPREPLY=()
+  _git_wt_claude > /dev/null
+}
+
 @test "completes git wt-use with the picked worktree's folder name" {
   _complete_wt_use cost-code
   [ "${COMPREPLY[*]}" = "prt-3038-record-webhooks" ]
@@ -58,4 +65,26 @@ _complete_wt_use() {
 @test "after a cancel, the terminal's status reply only redraws the line" {
   FZF_STUB_CANCEL=1 _complete_wt_use 41
   [ "$(_status_reply_binding)" = '"\e[0n": redraw-current-line' ]
+}
+
+@test "completes git wt-claude with the picked worktree's folder name" {
+  _complete_wt_claude cost-code
+  [ "${COMPREPLY[*]}" = "prt-3038-record-webhooks" ]
+}
+
+@test "completes git wt-claude's worktree after an option" {
+  _complete_wt_claude --continue cost-code
+  [ "${COMPREPLY[*]}" = "prt-3038-record-webhooks" ]
+}
+
+@test "does not complete a worktree in place of the --prompt text" {
+  _complete_wt_claude --prompt cost-code
+  [ "${#COMPREPLY[@]}" -eq 0 ]
+}
+
+# git's completion is registered with -o nospace, so each candidate carries
+# its own trailing space
+@test "completes git wt-claude's options followed by a space" {
+  _complete_wt_claude --con
+  [ "${COMPREPLY[*]}" = "--continue " ]
 }

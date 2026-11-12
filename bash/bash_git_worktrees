@@ -1,11 +1,13 @@
 # shellcheck shell=bash
 # Interactive git wrapper: `git wt-use` changes the current shell's directory,
-# which the git alias can't do since it runs in a child process. Every other
-# git command passes straight through.
+# which the git alias can't do since it runs in a child process; `git
+# wt-claude` does the same before starting Claude, so the shell stays in the
+# worktree after Claude exits. Every other git command passes straight through.
 
 git() {
     case "${1:-}" in
         wt-use) _git_worktree_cd "${@:2}" ;;
+        wt-claude) _git_worktree_cd_then git-worktree-claude "${@:2}" ;;
         *) command git "$@" ;;
     esac
 }
@@ -22,4 +24,41 @@ _git_worktree_cd() {
     local worktree_path
     worktree_path=$(command git-worktree-use "$@") || return
     cd "$worktree_path" || return
+}
+
+# Picks and cds with the query (the first argument that isn't an option),
+# then runs <script> --current with the options
+_git_worktree_cd_then() {
+    local script="$1"
+    shift
+
+    if _git_worktree_skips_pick "$@"; then
+        command "$script" "$@"
+        return
+    fi
+
+    local query=""
+    local options=()
+    while (( $# )); do
+        case "$1" in
+            --prompt) options+=("$1" "${2:-}"); shift ;;
+            -*) options+=("$1") ;;
+            *) query="$1" ;;
+        esac
+        shift
+    done
+
+    _git_worktree_cd "$query" || return
+    command "$script" --current "${options[@]}"
+}
+
+# --help prints text and --current already says where to run
+_git_worktree_skips_pick() {
+    local argument
+    for argument in "$@"; do
+        case "$argument" in
+            -h|--help|--current) return 0 ;;
+        esac
+    done
+    return 1
 }

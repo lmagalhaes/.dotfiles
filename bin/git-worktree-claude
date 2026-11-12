@@ -1,0 +1,66 @@
+#!/usr/bin/env bash
+# git-worktree-claude - Pick a worktree with fzf and start Claude in it
+#
+# Usage: git worktree-claude [--current | query] [--continue | --load | --prompt <text>]
+
+# Source common functions and variables
+source "$(dirname "$0")/git-worktree-common"
+
+readonly LOAD_PROMPT="/task-context:load"
+
+show_help() {
+    echo "Usage: git worktree-claude [--current | query] [--continue | --load | --prompt <text>]"
+    echo ""
+    echo "Pick a git worktree with fzf (as git wt-use does) and start Claude in it."
+    echo "Starts a new session unless told otherwise."
+    echo ""
+    echo "Options:"
+    echo "  --current        Start Claude in the current directory, without picking"
+    echo "  --continue       Resume the worktree's last session"
+    echo "  --load           Start a new session running $LOAD_PROMPT"
+    echo "  --prompt <text>  Start a new session with <text> as the first prompt"
+    echo ""
+    echo "Examples:"
+    echo "  git wt-claude 3038"
+    echo "  git wt-claude 3038 --continue"
+    echo "  git wt-claude 3038 --load"
+    echo ""
+    echo "Aliases:"
+    echo "  git wt-claude"
+}
+
+main() {
+    local query=""
+    local current=false
+    local claude_args=()
+
+    while (( $# )); do
+        case "$1" in
+            -h|--help) show_help; exit 0 ;;
+            --current) current=true ;;
+            --continue) claude_args=(--continue) ;;
+            --load) claude_args=("$LOAD_PROMPT") ;;
+            --prompt)
+                [[ -n "${2:-}" ]] || error "--prompt needs the prompt text"
+                claude_args=("$2")
+                shift
+                ;;
+            *) query="$1" ;;
+        esac
+        shift
+    done
+
+    if [[ "$current" == false ]]; then
+        local worktree_path
+        worktree_path=$("$(dirname "$0")/git-worktree-use" "$query")
+        cd "$worktree_path" || exit
+    fi
+
+    # A `!` git alias exports these for the worktree it was run from; left
+    # set, Claude's git commands would act on that worktree instead of this one
+    unset GIT_DIR GIT_WORK_TREE GIT_PREFIX
+
+    exec claude "${claude_args[@]}"
+}
+
+main "$@"

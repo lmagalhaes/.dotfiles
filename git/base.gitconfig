@@ -42,6 +42,7 @@
     wt-cleanup = !git-worktree-cleanup
     wt-rm = !git-worktree-remove
     wt-use = !git-worktree-use
+    wt-claude = !git-worktree-claude
     # Docker commands for worktrees (parallel container support)
     wt-docker = !git-worktree-docker
     # Legacy: switch all containers to single worktree (deprecated)
