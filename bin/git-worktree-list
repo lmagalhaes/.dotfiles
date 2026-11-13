@@ -1,16 +1,24 @@
 #!/usr/bin/env bash
 # git-worktree-list - List all worktrees with enhanced information
 #
-# Usage: git worktree-list
+# Usage: git worktree-list [--status [--no-fetch]]
 
 # Source common functions and variables
 source "$(dirname "$0")/git-worktree-common"
 
-# Show help
-if [ $# -gt 0 ] && ([ "$1" = "-h" ] || [ "$1" = "--help" ]); then
-    echo "Usage: git worktree-list"
+readonly BASE_REF="origin/main"
+
+show_help() {
+    echo "Usage: git worktree-list [--status [--no-fetch]]"
     echo ""
     echo "List all git worktrees with enhanced information."
+    echo ""
+    echo "Options:"
+    echo "  --status    Add a status line per worktree (uncommitted files,"
+    echo "              commits ahead/behind $BASE_REF or merged) and a PR"
+    echo "              line (state, review, labels) from gh. Fetches origin"
+    echo "              first."
+    echo "  --no-fetch  With --status, skip the fetch"
     echo ""
     echo "Features:"
     echo "  - Color-coded output"
@@ -20,11 +28,143 @@ if [ $# -gt 0 ] && ([ "$1" = "-h" ] || [ "$1" = "--help" ]); then
     echo "Aliases:"
     echo "  git wt-list"
     echo "  git wt-ls"
-    exit 0
-fi
+}
+
+# "path<TAB>branch" per worktree, branch empty when detached; bare skipped
+list_worktree_branches() {
+    git worktree list --porcelain | awk '
+        /^worktree / { path = substr($0, 10); branch = ""; is_bare = 0 }
+        /^branch / { branch = substr($0, 8); sub(/^refs\/heads\//, "", branch) }
+        /^bare$/ { is_bare = 1 }
+        /^$/ && !is_bare { print path "\t" branch }
+    '
+}
+
+fetch_origin() {
+    git remote get-url origin &>/dev/null || return 0
+    git fetch --quiet origin 2>/dev/null \
+        || warning "Couldn't fetch origin, status uses the last fetched state" >&2
+}
+
+join_with_dots() {
+    local joined="$1" part
+    shift
+    for part in "$@"; do
+        joined+=" · $part"
+    done
+    echo "$joined"
+}
+
+uncommitted_status() {
+    local count
+    count=$(git -C "$1" status --porcelain | wc -l | tr -d ' ')
+    if [ "$count" -eq 0 ]; then
+        echo "clean"
+        return
+    fi
+    echo "$count uncommitted"
+}
+
+# Merges are rebase fast-forward, so a branch with nothing ahead of
+# $BASE_REF is merged (or has no commits yet)
+branch_status() {
+    local branch="$1" ahead behind
+    local parts=()
+    git rev-parse --verify --quiet "$BASE_REF" >/dev/null || return 0
+    read -r behind ahead < <(git rev-list --left-right --count "$BASE_REF...$branch")
+    if [ "$branch" != "${BASE_REF#origin/}" ] && [ "$ahead" -eq 0 ]; then
+        echo "merged"
+        return
+    fi
+    [ "$ahead" -gt 0 ] && parts+=("$ahead ahead")
+    [ "$behind" -gt 0 ] && parts+=("$behind behind")
+    if [ ${#parts[@]} -eq 0 ]; then
+        echo "up to date"
+        return
+    fi
+    join_with_dots "${parts[@]}"
+}
+
+# "#N state[ merge date][, review] [labels]"; the review only while the PR is
+# open, the merge date (local) once merged
+# shellcheck disable=SC2016 # jq variables, not shell ones
+readonly PULL_REQUEST_FORMAT='
+    .[]
+    | ({APPROVED: "approved", REVIEW_REQUIRED: "pending approval",
+        CHANGES_REQUESTED: "changes requested"}[.reviewDecision // ""]) as $review
+    | ([(.labels // [])[].name] | join(", ")) as $labels
+    | "#\(.number) \(.state | ascii_downcase)"
+      + (if .mergedAt then " \(.mergedAt | fromdateiso8601 | strflocaltime("%Y-%m-%d"))" else "" end)
+      + (if .state == "OPEN" and $review then ", \($review)" else "" end)
+      + (if $labels != "" then " [\($labels)]" else "" end)
+'
+
+# The branch's newest PR; empty when detached, when there's none, or when gh
+# is missing or fails
+pull_request_status() {
+    [ -n "$1" ] || return 0
+    gh pr list --state all --head "$1" --limit 1 \
+        --json number,state,reviewDecision,labels,mergedAt \
+        --jq "$PULL_REQUEST_FORMAT" 2>/dev/null || true
+}
+
+worktree_status() {
+    local path="$1" branch="$2"
+    if [ ! -d "$path" ]; then
+        echo "missing"
+        return
+    fi
+    local parts=("$(uncommitted_status "$path")")
+    if [ -n "$branch" ]; then
+        local branch_part
+        branch_part=$(branch_status "$branch")
+        [ -n "$branch_part" ] && parts+=("$branch_part")
+    fi
+    join_with_dots "${parts[@]}"
+}
+
+# "path<TAB>status<TAB>pull request" per worktree, in list order. Each worktree runs in the
+# background: its gh lookup is a network round trip of about a second
+worktree_statuses() {
+    local results_dir path branch cleanup
+    local count=0
+    results_dir=$(mktemp -d "${TMPDIR:-/tmp}/git-worktree-list.XXXXXX")
+    printf -v cleanup 'rm -rf %q' "$results_dir"
+    # shellcheck disable=SC2064 # expand now: results_dir is gone when the trap runs
+    trap "$cleanup" EXIT
+    while IFS=$'\t' read -r path branch; do
+        printf '%s\t%s\t%s\n' "$path" "$(worktree_status "$path" "$branch")" \
+            "$(pull_request_status "$branch")" > "$results_dir/$count" &
+        count=$((count + 1))
+    done < <(list_worktree_branches)
+    wait
+    local index
+    for ((index = 0; index < count; index++)); do
+        cat "$results_dir/$index"
+    done
+}
+
+SHOW_STATUS=false
+FETCH=true
+while [ $# -gt 0 ]; do
+    case "$1" in
+        -h|--help) show_help; exit 0 ;;
+        --status) SHOW_STATUS=true ;;
+        --no-fetch) FETCH=false ;;
+        *) error "Unknown option: $1 (see --help)" ;;
+    esac
+    shift
+done
 
 # Check if in a git repository
 check_git_repo
+
+WORKTREE_STATUSES=""
+if [ "$SHOW_STATUS" = true ]; then
+    [ "$FETCH" = true ] && fetch_origin
+    WORKTREE_STATUSES=$(worktree_statuses)
+fi
+export WORKTREE_STATUSES
 
 # Get repository root - physical path for comparison, logical path for display
 REPO_ROOT_PHYSICAL=$(get_repo_root_physical)
@@ -47,6 +187,13 @@ BEGIN {
     CYAN = "\033[0;36m"
     GRAY = "\033[0;90m"
     NC = "\033[0m"
+
+    rows = split(ENVIRON["WORKTREE_STATUSES"], status_rows, "\n")
+    for (i = 1; i <= rows; i++) {
+        split(status_rows[i], fields, "\t")
+        status[fields[1]] = fields[2]
+        pull_request[fields[1]] = fields[3]
+    }
 }
 
 /^worktree / {
@@ -117,6 +264,17 @@ function print_worktree() {
     } else if (is_detached) {
         printf "  %sDetached HEAD:%s %s\n", CYAN, NC, substr(head, 1, 8)
     }
+    if (worktree in status) {
+        printf "  %sStatus:%s %s\n", CYAN, NC, status[worktree]
+    }
+    if (pull_request[worktree] != "") {
+        printf "  %sPR:%s %s\n", CYAN, NC, pull_request[worktree]
+    }
     printf "\n"
 }
 '
+
+if [ "$SHOW_STATUS" = false ]; then
+    echo -e "  ${GRAY}git wt-list --status adds uncommitted files, ahead/behind and PRs${NC}"
+    echo ""
+fi

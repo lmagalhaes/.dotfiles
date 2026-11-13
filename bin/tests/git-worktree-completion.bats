@@ -42,6 +42,13 @@ _complete_wt_claude() {
   _git_wt_claude > /dev/null
 }
 
+_complete_wt_list() {
+  COMP_WORDS=(git wt-list "$@")
+  COMP_CWORD=$(( ${#COMP_WORDS[@]} - 1 ))
+  COMPREPLY=()
+  _git_wt_list > /dev/null
+}
+
 @test "completes git wt-use with the picked worktree's folder name" {
   _complete_wt_use cost-code
   [ "${COMPREPLY[*]}" = "prt-3038-record-webhooks" ]
@@ -87,4 +94,9 @@ _complete_wt_claude() {
 @test "completes git wt-claude's options followed by a space" {
   _complete_wt_claude --con
   [ "${COMPREPLY[*]}" = "--continue " ]
+}
+
+@test "completes git wt-list's --status option followed by a space" {
+  _complete_wt_list --st
+  [ "${COMPREPLY[*]}" = "--status " ]
 }

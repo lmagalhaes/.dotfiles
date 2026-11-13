@@ -201,11 +201,11 @@ _git_wt_create() {
     fi
 }
 
-# Aliases for git wt-list and git wt-ls (no arguments needed, but support -h)
+# Aliases for git wt-list and git wt-ls (options only)
 _git_wt_list() {
     local cur="${COMP_WORDS[COMP_CWORD]}"
     if [[ "$cur" == -* ]]; then
-        mapfile -t COMPREPLY < <(compgen -W "-h --help" -- "$cur")
+        mapfile -t COMPREPLY < <(compgen -W "--status --no-fetch -h --help" -S ' ' -- "$cur")
     fi
 }
 
