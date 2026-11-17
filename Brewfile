@@ -84,6 +84,8 @@ brew "nmap"
 brew "pam-reattach"
 # Swiss-army knife of markup format conversion
 brew "pandoc"
+# Shell command parallelization utility
+brew "parallel"
 # General-purpose scripting language
 brew "php@8.3"
 # Parallel gzip

@@ -30,6 +30,17 @@ update-brewfile
 brew bundle --file=~/.dotfiles/Brewfile
 ```
 
+## Tests
+
+```bash
+# All bats suites, 8 at a time (needs GNU parallel, in the Brewfile)
+bats --jobs 8 bin/tests/
+```
+
+Use this as the test command, including `/review-loop --test-cmd`. Eight jobs is
+fastest on this 10-core machine (about 2.5x faster than serial); more jobs are no
+faster.
+
 ## Architecture
 
 ### Stow-based symlink management
