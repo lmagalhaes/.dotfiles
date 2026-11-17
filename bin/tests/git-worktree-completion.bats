@@ -96,6 +96,21 @@ _complete_wt_list() {
   [ "${COMPREPLY[*]}" = "--continue " ]
 }
 
+@test "completes git wt-claude's --open option" {
+  _complete_wt_claude --op
+  [ "${COMPREPLY[*]}" = "--open " ]
+}
+
+@test "completes git wt-use's --open option" {
+  _complete_wt_use --op
+  [ "${COMPREPLY[*]}" = "--open " ]
+}
+
+@test "completes git wt-use's worktree after --open" {
+  _complete_wt_use --open cost-code
+  [ "${COMPREPLY[*]}" = "prt-3038-record-webhooks" ]
+}
+
 @test "completes git wt-list's --status option followed by a space" {
   _complete_wt_list --st
   [ "${COMPREPLY[*]}" = "--status " ]

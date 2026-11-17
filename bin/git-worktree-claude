@@ -1,21 +1,27 @@
 #!/usr/bin/env bash
 # git-worktree-claude - Pick a worktree with fzf and start Claude in it
 #
-# Usage: git worktree-claude [--current | query] [--continue | --load | --prompt <text>]
+# Usage: git worktree-claude [--current | query] [--open] [--continue | --load | --prompt <text>]
 
 # Source common functions and variables
 source "$(dirname "$0")/git-worktree-common"
 
+# Absolute, since main cds into the worktree before calling the helpers
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+readonly SCRIPT_DIR
 readonly LOAD_PROMPT="/task-context:load"
 
 show_help() {
-    echo "Usage: git worktree-claude [--current | query] [--continue | --load | --prompt <text>]"
+    echo "Usage: git worktree-claude [--current | query] [--open] [--continue | --load | --prompt <text>]"
     echo ""
     echo "Pick a git worktree with fzf (as git wt-use does) and start Claude in it."
     echo "Starts a new session unless told otherwise."
     echo ""
     echo "Options:"
     echo "  --current        Start Claude in the current directory, without picking"
+    echo "  --open           Inside herdr, start Claude in the worktree's tab (as"
+    echo "                   git wt-use --open opens it); a tab already running Claude"
+    echo "                   is only focused. In the worktree's own tab, starts it here"
     echo "  --continue       Resume the worktree's last session"
     echo "  --load           Start a new session running $LOAD_PROMPT"
     echo "  --prompt <text>  Start a new session with <text> as the first prompt"
@@ -24,6 +30,7 @@ show_help() {
     echo "  git wt-claude 3038"
     echo "  git wt-claude 3038 --continue"
     echo "  git wt-claude 3038 --load"
+    echo "  git wt-claude 3038 --open"
     echo ""
     echo "Aliases:"
     echo "  git wt-claude"
@@ -32,12 +39,14 @@ show_help() {
 main() {
     local query=""
     local current=false
+    local open=false
     local claude_args=()
 
     while (( $# )); do
         case "$1" in
             -h|--help) show_help; exit 0 ;;
             --current) current=true ;;
+            --open) open=true ;;
             --continue) claude_args=(--continue) ;;
             --load) claude_args=("$LOAD_PROMPT") ;;
             --prompt)
@@ -50,15 +59,24 @@ main() {
         shift
     done
 
+    if [[ "$open" == true ]] && ! inside_herdr; then
+        warning "--open needs herdr; starting Claude here instead" >&2
+        open=false
+    fi
+
     if [[ "$current" == false ]]; then
         local worktree_path
-        worktree_path=$("$(dirname "$0")/git-worktree-use" "$query")
+        worktree_path=$("$SCRIPT_DIR/git-worktree-use" "$query")
         cd "$worktree_path" || exit
     fi
 
     # A `!` git alias exports these for the worktree it was run from; left
     # set, Claude's git commands would act on that worktree instead of this one
     unset GIT_DIR GIT_WORK_TREE GIT_PREFIX
+
+    if [[ "$open" == true ]]; then
+        exec "$SCRIPT_DIR/git-worktree-herdr" open-claude "$PWD" "$(basename "$PWD")" "${claude_args[@]}"
+    fi
 
     exec claude "${claude_args[@]}"
 }

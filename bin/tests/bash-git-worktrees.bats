@@ -10,6 +10,8 @@ setup() {
   export WORKTREES_DIR="$TEST_ROOT/worktrees"
   export GIT_STUB_ARGS="$TEST_ROOT/git-args"
   export CLAUDE_STUB_LOG="$TEST_ROOT/claude"
+  export HERDR_STUB_ARGS="$TEST_ROOT/herdr-args"
+  unset HERDR_TAB_ID HERDR_WORKSPACE_ID HERDR_PANE_ID
   mkdir -p "$WORKTREES_DIR/prt-3038" "$TEST_ROOT/start"
   _stub_commands
   source "$WRAPPER"
@@ -18,7 +20,8 @@ setup() {
 
 # Fake picker prints $WORKTREES_DIR/<query>; PICKER_STUB_CANCEL=1 simulates
 # Esc. Fake git records its arguments; fake git-worktree-claude records where
-# it ran and its arguments, one per line.
+# it ran and its arguments, one per line. Fake git-worktree-herdr records its
+# arguments; HERDR_STUB_FAIL=1 makes it fail.
 _stub_commands() {
   local stubs="$TEST_ROOT/stubs"
   mkdir -p "$stubs"
@@ -37,7 +40,12 @@ STUB
 pwd > "$CLAUDE_STUB_LOG.pwd"
 printf '%s\n' "$@" > "$CLAUDE_STUB_LOG.args"
 STUB
-  chmod +x "$stubs/git-worktree-use" "$stubs/git" "$stubs/git-worktree-claude"
+  cat > "$stubs/git-worktree-herdr" <<'STUB'
+#!/usr/bin/env bash
+printf '%s\n' "$*" > "$HERDR_STUB_ARGS"
+[[ -z "${HERDR_STUB_FAIL:-}" ]]
+STUB
+  chmod +x "$stubs/git-worktree-use" "$stubs/git" "$stubs/git-worktree-claude" "$stubs/git-worktree-herdr"
   PATH="$stubs:$PATH"
 }
 
@@ -94,6 +102,55 @@ STUB
 @test "git wt-claude --current starts claude without picking" {
   git wt-claude --current --load
   [ "$(cat "$CLAUDE_STUB_LOG.args")" = $'--current\n--load' ]
+}
+
+_inside_herdr() {
+  export HERDR_TAB_ID="w1:t1" HERDR_WORKSPACE_ID="w1"
+}
+
+@test "git wt-use names the herdr tab after the worktree" {
+  _inside_herdr
+  git wt-use prt-3038
+  [ "$(cat "$HERDR_STUB_ARGS")" = "rename-tab prt-3038" ]
+}
+
+@test "git wt-use leaves the tab name alone outside herdr" {
+  git wt-use prt-3038
+  [ ! -e "$HERDR_STUB_ARGS" ]
+}
+
+@test "a failed tab rename does not fail git wt-use" {
+  _inside_herdr
+  HERDR_STUB_FAIL=1 run git wt-use prt-3038
+  [ "$status" -eq 0 ]
+}
+
+@test "git wt-claude names the herdr tab after the worktree" {
+  _inside_herdr
+  git wt-claude prt-3038
+  [ "$(cat "$HERDR_STUB_ARGS")" = "rename-tab prt-3038" ]
+}
+
+@test "git wt-use --open inside herdr leaves this shell where it is" {
+  _inside_herdr
+  git wt-use prt-3038 --open
+  [ "$PWD" = "$TEST_ROOT/start" ]
+}
+
+@test "git wt-use --open outside herdr changes directory as usual" {
+  git wt-use prt-3038 --open
+  [ "$PWD" = "$WORKTREES_DIR/prt-3038" ]
+}
+
+@test "git wt-claude --open inside herdr leaves the pick to the script" {
+  _inside_herdr
+  git wt-claude prt-3038 --open
+  [ "$(cat "$CLAUDE_STUB_LOG.args")" = $'prt-3038\n--open' ]
+}
+
+@test "git wt-claude --open outside herdr starts claude here as usual" {
+  git wt-claude prt-3038 --open
+  [ "$(cat "$CLAUDE_STUB_LOG.args")" = $'--current\n--open' ]
 }
 
 @test "other git commands pass through with their arguments" {

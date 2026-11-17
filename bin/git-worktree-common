@@ -41,6 +41,11 @@ check_git_repo() {
     fi
 }
 
+# herdr sets these in every pane it runs
+inside_herdr() {
+    [[ -n "${HERDR_TAB_ID:-}" && -n "${HERDR_WORKSPACE_ID:-}" ]]
+}
+
 # ============================================================================
 # Repository Root Path Resolution Methods
 # ============================================================================

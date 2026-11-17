@@ -100,3 +100,31 @@ setup() {
   run --separate-stderr "$SCRIPT"
   [ "$status" -eq 1 ]
 }
+
+@test "--open inside herdr opens a tab in the picked worktree" {
+  stub_herdr
+  run --separate-stderr "$SCRIPT" 4100 --open
+  [ "$(last_herdr_call)" = "tab create --workspace w1 --cwd $REPO/.worktrees/prt-4100-invoice-export --label prt-4100-invoice-export --focus" ]
+}
+
+@test "--open inside herdr prints no path" {
+  stub_herdr
+  run --separate-stderr "$SCRIPT" 4100 --open
+  [ -z "$output" ]
+}
+
+@test "--open labels the main checkout's tab with the repo's folder name" {
+  stub_herdr
+  run --separate-stderr "$SCRIPT" --open main
+  [ "$(last_herdr_call)" = "tab create --workspace w1 --cwd $REPO --label repo --focus" ]
+}
+
+@test "--open outside herdr prints the path instead" {
+  run --separate-stderr "$SCRIPT" 4100 --open
+  [ "$output" = "$REPO/.worktrees/prt-4100-invoice-export" ]
+}
+
+@test "--open outside herdr warns that it needs herdr" {
+  run --separate-stderr "$SCRIPT" 4100 --open
+  [[ "$stderr" == *"needs herdr"* ]]
+}

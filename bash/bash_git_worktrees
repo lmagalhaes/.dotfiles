@@ -2,7 +2,10 @@
 # Interactive git wrapper: `git wt-use` changes the current shell's directory,
 # which the git alias can't do since it runs in a child process; `git
 # wt-claude` does the same before starting Claude, so the shell stays in the
-# worktree after Claude exits. Every other git command passes straight through.
+# worktree after Claude exits. Inside herdr, a cd also renames the tab after the
+# worktree, and --open moves to the worktree's tab instead of moving this shell.
+# The rename lives here so scripts calling the commands never rename a tab.
+# Every other git command passes straight through.
 
 git() {
     case "${1:-}" in
@@ -21,9 +24,38 @@ _git_worktree_cd() {
             ;;
     esac
 
+    if _git_worktree_opens_tab "$@"; then
+        command git-worktree-use "$@"
+        return
+    fi
+
     local worktree_path
     worktree_path=$(command git-worktree-use "$@") || return
     cd "$worktree_path" || return
+    _git_worktree_name_tab
+}
+
+# Outside herdr the scripts ignore --open with a warning, so the cd goes ahead
+_git_worktree_opens_tab() {
+    _git_worktree_inside_herdr || return 1
+
+    local argument
+    for argument in "$@"; do
+        [[ "$argument" == "--open" ]] && return 0
+    done
+    return 1
+}
+
+# A failed rename never undoes or fails the cd
+_git_worktree_name_tab() {
+    _git_worktree_inside_herdr || return 0
+
+    command git-worktree-herdr rename-tab "${PWD##*/}" || true
+}
+
+# Same check as inside_herdr in bin/git-worktree-common
+_git_worktree_inside_herdr() {
+    [[ -n "${HERDR_TAB_ID:-}" && -n "${HERDR_WORKSPACE_ID:-}" ]]
 }
 
 # Picks and cds with the query (the first argument that isn't an option),
@@ -32,7 +64,7 @@ _git_worktree_cd_then() {
     local script="$1"
     shift
 
-    if _git_worktree_skips_pick "$@"; then
+    if _git_worktree_skips_pick "$@" || _git_worktree_opens_tab "$@"; then
         command "$script" "$@"
         return
     fi

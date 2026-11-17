@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # git-worktree-use - Pick a worktree with fzf and print its path
 #
-# Usage: git worktree-use [--print-name] [query]
+# Usage: git worktree-use [--print-name | --open] [query]
 
 # Source common functions and variables
 source "$(dirname "$0")/git-worktree-common"
@@ -12,7 +12,7 @@ readonly NAME_FIELD=1
 readonly PATH_FIELD=3
 
 show_help() {
-    echo "Usage: git worktree-use [--print-name] [query]"
+    echo "Usage: git worktree-use [--print-name | --open] [query]"
     echo ""
     echo "Pick a git worktree with fzf and print its path."
     echo ""
@@ -22,10 +22,13 @@ show_help() {
     echo ""
     echo "Options:"
     echo "  --print-name   Print the folder name instead of the path (tab completion)"
+    echo "  --open         Inside herdr, focus the worktree's tab, or create one, instead"
+    echo "                 of printing the path. Tabs are named after the worktree folder"
     echo ""
     echo "Examples:"
     echo "  git wt-use"
     echo "  git wt-use 3038"
+    echo "  git wt-use 3038 --open"
     echo "  cd \"\$(git wt-use 3038)\""
     echo ""
     echo "Aliases:"
@@ -122,18 +125,32 @@ pick_worktree_row() {
         cut -f 2-
 }
 
+# The main checkout's tab is named after the repo's folder
+open_worktree_tab() {
+    local path="$1"
+
+    "$(dirname "$0")/git-worktree-herdr" open-tab "$path" "$(basename "$path")"
+}
+
 main() {
     local query=""
     local output_field="$PATH_FIELD"
+    local open=false
 
     while (( $# )); do
         case "$1" in
             -h|--help) show_help; exit 0 ;;
             --print-name) output_field="$NAME_FIELD" ;;
+            --open) open=true ;;
             *) query="$1" ;;
         esac
         shift
     done
+
+    if [[ "$open" == true ]] && ! inside_herdr; then
+        warning "--open needs herdr; printing the path instead" >&2
+        open=false
+    fi
 
     check_git_repo
 
@@ -146,6 +163,11 @@ main() {
     fi
     if (( pick_status != 0 )); then
         exit "$pick_status"
+    fi
+
+    if [[ "$open" == true ]]; then
+        open_worktree_tab "$(cut -f "$PATH_FIELD" <<< "$selected_row")"
+        return
     fi
 
     # fzf draws on the tty, so stdout holds only the selected field

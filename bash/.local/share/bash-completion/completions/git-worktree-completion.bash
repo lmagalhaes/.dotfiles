@@ -89,21 +89,26 @@ _git_wt_rm() {
 
 # For git alias: git wt-use <TAB>
 _git_wt_use() {
-    _git_worktree_complete_name wt-use
+    _git_worktree_complete_options_or_name wt-use "--open -h --help"
 }
 
 # For git alias: git wt-claude <TAB>
-# Options, or the worktree picker as for wt-use. git's completion runs with
-# -o nospace, so options carry their own trailing space
 _git_wt_claude() {
+    _git_worktree_complete_options_or_name wt-claude "--continue --load --prompt --current --open -h --help"
+}
+
+# Options, or the worktree picker. git's completion runs with -o nospace, so
+# options carry their own trailing space
+_git_worktree_complete_options_or_name() {
+    local subcommand="$1"
+    local options="$2"
     local cur="${COMP_WORDS[COMP_CWORD]}"
-    local options="--continue --load --prompt --current -h --help"
 
     if [[ "$cur" == -* ]]; then
         mapfile -t COMPREPLY < <(compgen -W "$options" -S ' ' -- "$cur")
         return
     fi
-    _git_worktree_complete_name wt-claude
+    _git_worktree_complete_name "$subcommand"
 }
 
 # Opens the worktree picker inline, filtered by the word typed so far. A pick

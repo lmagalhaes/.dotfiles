@@ -89,3 +89,65 @@ _claude_args() { cat "$CLAUDE_STUB_LOG.args"; }
   GIT_DIR="$REPO/.git" run --separate-stderr "$SCRIPT" 4100
   [ "$(cat "$CLAUDE_STUB_LOG.git-dir")" = "unset" ]
 }
+
+@test "--open inside herdr starts claude in the worktree's tab with its options" {
+  stub_herdr
+  run --separate-stderr "$SCRIPT" 4100 --open --load
+  [ "$(last_herdr_call)" = "agent start claude-w1-p9 --kind claude --pane w1:p9 -- /task-context:load" ]
+}
+
+@test "--open inside herdr does not start claude here" {
+  stub_herdr
+  run --separate-stderr "$SCRIPT" 4100 --open
+  [ ! -e "$CLAUDE_STUB_LOG.pwd" ]
+}
+
+@test "--open with --current opens the tab for the current directory" {
+  stub_herdr
+  cd "$REPO/.worktrees/prt-3038-record-webhooks"
+  run --separate-stderr "$SCRIPT" --current --open
+  [ "$(last_herdr_call)" = "agent start claude-w1-p9 --kind claude --pane w1:p9 --" ]
+}
+
+# The script cds into the worktree before calling its herdr helper, so a
+# relative $0 would no longer point beside the script
+@test "--open finds its herdr helper when called by a relative path" {
+  stub_herdr
+  ln -s "$BIN_DIR" "$REPO/tools"
+  run --separate-stderr tools/git-worktree-claude 4100 --open
+  [ "$(last_herdr_call)" = "agent start claude-w1-p9 --kind claude --pane w1:p9 --" ]
+}
+
+# After `git wt-use 4100` this tab carries the worktree's label, and its only
+# free pane is the one running this command
+@test "--open starts claude here when the worktree's tab is the current one" {
+  stub_herdr
+  HERDR_STUB_TABS='[{"tab_id":"w1:t1","label":"prt-4100-invoice-export"}]'
+  run --separate-stderr "$SCRIPT" 4100 --open
+  [ "$(_claude_pwd)" = "$REPO/.worktrees/prt-4100-invoice-export" ]
+}
+
+@test "--open in the worktree's tab starts claude without the GIT_DIR a git alias exports" {
+  stub_herdr
+  HERDR_STUB_TABS='[{"tab_id":"w1:t1","label":"prt-4100-invoice-export"}]'
+  GIT_DIR="$REPO/.git" run --separate-stderr "$SCRIPT" 4100 --open
+  [ "$(cat "$CLAUDE_STUB_LOG.git-dir")" = "unset" ]
+}
+
+@test "--open in the worktree's tab starts no second claude when one runs there" {
+  stub_herdr
+  HERDR_STUB_TABS='[{"tab_id":"w1:t1","label":"prt-4100-invoice-export"}]'
+  HERDR_STUB_PANES='[{"pane_id":"w1:p2","tab_id":"w1:t1","agent":"claude"}]'
+  run --separate-stderr "$SCRIPT" 4100 --open
+  [ ! -e "$CLAUDE_STUB_LOG.pwd" ]
+}
+
+@test "--open outside herdr starts claude here instead" {
+  run --separate-stderr "$SCRIPT" 4100 --open
+  [ "$(_claude_pwd)" = "$REPO/.worktrees/prt-4100-invoice-export" ]
+}
+
+@test "--open outside herdr warns that it needs herdr" {
+  run --separate-stderr "$SCRIPT" 4100 --open
+  [[ "$stderr" == *"needs herdr"* ]]
+}

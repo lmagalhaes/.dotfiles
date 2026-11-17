@@ -1,0 +1,156 @@
+#!/usr/bin/env bash
+# git-worktree-herdr - Every herdr call the git-worktree-* scripts make, in one
+# place while herdr's CLI is young
+#
+# Usage: git-worktree-herdr rename-tab <label>
+#        git-worktree-herdr open-tab <path> <label>
+#        git-worktree-herdr open-claude <path> <label> [claude arguments]
+
+# Source common functions and variables
+source "$(dirname "$0")/git-worktree-common"
+
+show_help() {
+    echo "Usage: git-worktree-herdr rename-tab <label>"
+    echo "       git-worktree-herdr open-tab <path> <label>"
+    echo "       git-worktree-herdr open-claude <path> <label> [claude arguments]"
+    echo ""
+    echo "herdr tab handling for git wt-use and git wt-claude. Runs inside herdr only."
+    echo ""
+    echo "Commands:"
+    echo "  rename-tab   Rename the current tab"
+    echo "  open-tab     Focus this workspace's tab with <label>, or create one in <path>"
+    echo "  open-claude  Open the tab as open-tab does, then start Claude in a pane at its"
+    echo "               shell prompt (in this pane when the tab is the current one),"
+    echo "               unless Claude already runs there"
+}
+
+rename_tab() {
+    local label="${1:?rename-tab needs a label}"
+
+    herdr tab rename "$HERDR_TAB_ID" "$label" > /dev/null
+}
+
+# Prints the id of this workspace's tab with <label>, if there is one
+find_tab() {
+    local label="$1"
+
+    herdr tab list --workspace "$HERDR_WORKSPACE_ID" |
+        jq -r --arg label "$label" 'first(.result.tabs[] | select(.label == $label) | .tab_id) // empty'
+}
+
+focus_tab() {
+    local tab_id="$1"
+
+    herdr tab focus "$tab_id" > /dev/null
+}
+
+# Creates a focused tab in <path> and prints the id of its pane
+create_tab() {
+    local path="$1"
+    local label="$2"
+
+    herdr tab create --workspace "$HERDR_WORKSPACE_ID" --cwd "$path" --label "$label" --focus |
+        jq -r '.result.root_pane.pane_id'
+}
+
+# Prints the ids of a tab's panes running <agent>; an empty <agent> means none
+tab_panes_running() {
+    local tab_id="$1"
+    local agent="$2"
+
+    herdr pane list --workspace "$HERDR_WORKSPACE_ID" |
+        jq -r --arg tab "$tab_id" --arg agent "$agent" \
+            '.result.panes[] | select(.tab_id == $tab and (.agent // "") == $agent) | .pane_id'
+}
+
+# herdr agent names must be unique and match [a-z][a-z0-9_-]{0,31}, which a
+# tab label may not; a pane runs one agent, so its id makes a name that does
+start_claude() {
+    local pane_id="$1"
+    shift
+    local agent_name="claude-${pane_id//[^a-z0-9_-]/-}"
+
+    herdr agent start "$agent_name" --kind claude --pane "$pane_id" -- "$@" > /dev/null
+}
+
+open_tab() {
+    local path="${1:?open-tab needs a path}"
+    local label="${2:?open-tab needs a label}"
+    local tab_id
+    tab_id=$(find_tab "$label")
+
+    if [[ -n "$tab_id" ]]; then
+        focus_tab "$tab_id"
+        return
+    fi
+    create_tab "$path" "$label" > /dev/null
+}
+
+open_claude() {
+    local path="${1:?open-claude needs a path}"
+    local label="${2:?open-claude needs a label}"
+    shift 2
+    local tab_id
+    tab_id=$(find_tab "$label")
+
+    if [[ -z "$tab_id" ]]; then
+        local new_pane_id
+        new_pane_id=$(create_tab "$path" "$label")
+        start_claude "$new_pane_id" "$@"
+        return
+    fi
+
+    focus_tab "$tab_id"
+    if [[ -n "$(tab_panes_running "$tab_id" claude)" ]]; then
+        info "Claude already runs in tab $label"
+        return
+    fi
+    # The pane running this is busy, so herdr can't start Claude in it
+    if [[ "$tab_id" == "$HERDR_TAB_ID" ]]; then
+        exec claude "$@"
+    fi
+    start_claude_in_free_pane "$tab_id" "$label" "$@"
+}
+
+# The shell is the pane's foreground job only while it waits at its prompt; a
+# pane running an editor, tests or the command that called this is busy
+pane_at_prompt() {
+    local pane_id="$1"
+
+    herdr pane process-info --pane "$pane_id" |
+        jq -e '.result.process_info | .foreground_process_group_id == .shell_pid' > /dev/null
+}
+
+# `herdr agent start` needs a pane at its shell prompt: one with no agent whose
+# shell is idle
+start_claude_in_free_pane() {
+    local tab_id="$1"
+    local label="$2"
+    shift 2
+    local pane_ids pane_id
+    mapfile -t pane_ids < <(tab_panes_running "$tab_id" "")
+
+    for pane_id in "${pane_ids[@]}"; do
+        if pane_at_prompt "$pane_id"; then
+            start_claude "$pane_id" "$@"
+            return
+        fi
+    done
+    error "No pane in tab $label is at its shell prompt; free one for Claude"
+}
+
+main() {
+    local command="${1:-}"
+    shift || true
+
+    case "$command" in
+        -h|--help) show_help; exit 0 ;;
+        rename-tab|open-tab|open-claude) ;;
+        *) show_help >&2; exit 1 ;;
+    esac
+
+    inside_herdr || error "Not running inside herdr"
+    "${command//-/_}" "$@"
+}
+
+main "$@"
