@@ -19,6 +19,15 @@ setup() {
 _claude_pwd() { cat "$CLAUDE_STUB_LOG.pwd"; }
 _claude_args() { cat "$CLAUDE_STUB_LOG.args"; }
 
+# After `git wt-use 4100` this tab carries the worktree's label and its shell,
+# pane w1:p1, is in the worktree, as are the extra panes given as a JSON array
+_current_tab_in_worktree() {
+  local worktree="$REPO/.worktrees/prt-4100-invoice-export"
+  HERDR_STUB_TABS='[{"tab_id":"w1:t1","label":"prt-4100-invoice-export"}]'
+  HERDR_STUB_PANES=$(jq -nc --arg cwd "$worktree" --argjson extra "${1:-[]}" \
+    '[{pane_id: "w1:p1", tab_id: "w1:t1"}] + $extra | map(. + {cwd: $cwd})')
+}
+
 @test "with a query, starts claude inside the selected worktree" {
   run --separate-stderr "$SCRIPT" 4100
   [ "$(_claude_pwd)" = "$REPO/.worktrees/prt-4100-invoice-export" ]
@@ -109,22 +118,21 @@ _claude_args() { cat "$CLAUDE_STUB_LOG.args"; }
 # free pane is the one running this command
 @test "--open starts claude here when the worktree's tab is the current one" {
   stub_herdr
-  HERDR_STUB_TABS='[{"tab_id":"w1:t1","label":"prt-4100-invoice-export"}]'
+  _current_tab_in_worktree
   run --separate-stderr "$SCRIPT" 4100 --open
   [ "$(_claude_pwd)" = "$REPO/.worktrees/prt-4100-invoice-export" ]
 }
 
 @test "--open in the worktree's tab starts claude without the GIT_DIR a git alias exports" {
   stub_herdr
-  HERDR_STUB_TABS='[{"tab_id":"w1:t1","label":"prt-4100-invoice-export"}]'
+  _current_tab_in_worktree
   GIT_DIR="$REPO/.git" run --separate-stderr "$SCRIPT" 4100 --open
   [ "$(cat "$CLAUDE_STUB_LOG.git-dir")" = "unset" ]
 }
 
 @test "--open in the worktree's tab starts no second claude when one runs there" {
   stub_herdr
-  HERDR_STUB_TABS='[{"tab_id":"w1:t1","label":"prt-4100-invoice-export"}]'
-  HERDR_STUB_PANES='[{"pane_id":"w1:p2","tab_id":"w1:t1","agent":"claude"}]'
+  _current_tab_in_worktree '[{"pane_id":"w1:p2","tab_id":"w1:t1","agent":"claude"}]'
   run --separate-stderr "$SCRIPT" 4100 --open
   [ ! -e "$CLAUDE_STUB_LOG.pwd" ]
 }

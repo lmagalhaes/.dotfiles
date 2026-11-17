@@ -2,9 +2,19 @@
 # Fake herdr: records each call, one per line, in $HERDR_STUB_LOG and answers
 # `tab list` and `pane list` from the JSON arrays in $HERDR_STUB_TABS and
 # $HERDR_STUB_PANES. A created tab is w1:t9, with pane w1:p9. Every pane's
-# shell is at its prompt, except the panes listed in $HERDR_STUB_BUSY_PANES
-# (space-separated).
+# shell is at its prompt, except the panes listed in $HERDR_STUB_BUSY_PANES,
+# those in $HERDR_STUB_UNKNOWN_PANES have no process ids, and those in
+# $HERDR_STUB_STARTING_PANES are busy for their first two process-info calls,
+# like a shell still starting (all space-separated). The command named in $HERDR_STUB_FAILING, such as
+# "pane list", fails: every time, or only on its $HERDR_STUB_FAILING_CALL-th
+# call when that is set.
 echo "$*" >> "$HERDR_STUB_LOG"
+failing_call="${HERDR_STUB_FAILING_CALL:-}"
+if [[ "$1 $2" == "${HERDR_STUB_FAILING:-}" ]] &&
+   [[ -z "$failing_call" || "$(grep -c "^$1 $2" "$HERDR_STUB_LOG")" == "$failing_call" ]]; then
+  echo "herdr: $HERDR_STUB_FAILING failed" >&2
+  exit 1
+fi
 case "$1 $2" in
   "tab list") echo "{\"result\":{\"tabs\":$HERDR_STUB_TABS}}" ;;
   "pane list") echo "{\"result\":{\"panes\":$HERDR_STUB_PANES}}" ;;
@@ -12,6 +22,14 @@ case "$1 $2" in
   "pane process-info")
     foreground_group=1
     [[ " ${HERDR_STUB_BUSY_PANES:-} " == *" $4 "* ]] && foreground_group=2
+    if [[ " ${HERDR_STUB_STARTING_PANES:-} " == *" $4 "* ]] &&
+       (( $(grep -c "^pane process-info --pane $4$" "$HERDR_STUB_LOG") <= 2 )); then
+      foreground_group=2
+    fi
+    if [[ " ${HERDR_STUB_UNKNOWN_PANES:-} " == *" $4 "* ]]; then
+      echo '{"result":{"process_info":{"foreground_process_group_id":null,"shell_pid":null}}}'
+      exit 0
+    fi
     echo "{\"result\":{\"process_info\":{\"foreground_process_group_id\":$foreground_group,\"shell_pid\":1}}}"
     ;;
   *) echo '{"result":{}}' ;;

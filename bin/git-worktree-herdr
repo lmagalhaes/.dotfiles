@@ -9,6 +9,9 @@
 # Source common functions and variables
 source "$(dirname "$0")/git-worktree-common"
 
+readonly PROMPT_WAIT_ATTEMPTS=50
+readonly PROMPT_WAIT_SECONDS=0.1
+
 show_help() {
     echo "Usage: git-worktree-herdr rename-tab <label>"
     echo "       git-worktree-herdr open-tab <path> <label>"
@@ -30,12 +33,20 @@ rename_tab() {
     herdr tab rename "$HERDR_TAB_ID" "$label" > /dev/null
 }
 
-# Prints the id of this workspace's tab with <label>, if there is one
+# Prints the id of this workspace's tab with <label> and a pane in <path>, if
+# there is one: two repos' worktrees of one branch share a folder name, and so a
+# label
 find_tab() {
     local label="$1"
+    local path="$2"
+    local labelled_tabs
 
-    herdr tab list --workspace "$HERDR_WORKSPACE_ID" |
-        jq -r --arg label "$label" 'first(.result.tabs[] | select(.label == $label) | .tab_id) // empty'
+    labelled_tabs=$(herdr tab list --workspace "$HERDR_WORKSPACE_ID" |
+        jq -c --arg label "$label" '[.result.tabs[] | select(.label == $label) | .tab_id]')
+    [[ "$labelled_tabs" != "[]" ]] || return 0
+    herdr pane list --workspace "$HERDR_WORKSPACE_ID" |
+        jq -r --argjson tabs "$labelled_tabs" --arg path "$path" \
+            'first(.result.panes[] | select(.tab_id | IN($tabs[])) | select(.cwd == $path or (.cwd // "" | startswith($path + "/"))) | .tab_id) // empty'
 }
 
 focus_tab() {
@@ -77,7 +88,7 @@ open_tab() {
     local path="${1:?open-tab needs a path}"
     local label="${2:?open-tab needs a label}"
     local tab_id
-    tab_id=$(find_tab "$label")
+    tab_id=$(find_tab "$label" "$path")
 
     if [[ -n "$tab_id" ]]; then
         focus_tab "$tab_id"
@@ -91,17 +102,21 @@ open_claude() {
     local label="${2:?open-claude needs a label}"
     shift 2
     local tab_id
-    tab_id=$(find_tab "$label")
+    tab_id=$(find_tab "$label" "$path")
 
     if [[ -z "$tab_id" ]]; then
         local new_pane_id
         new_pane_id=$(create_tab "$path" "$label")
+        wait_for_prompt "$new_pane_id" "$label"
         start_claude "$new_pane_id" "$@"
         return
     fi
 
     focus_tab "$tab_id"
-    if [[ -n "$(tab_panes_running "$tab_id" claude)" ]]; then
+    local claude_pane_ids
+    claude_pane_ids=$(tab_panes_running "$tab_id" claude) ||
+        error "Could not tell whether Claude runs in tab $label"
+    if [[ -n "$claude_pane_ids" ]]; then
         info "Claude already runs in tab $label"
         return
     fi
@@ -113,12 +128,27 @@ open_claude() {
 }
 
 # The shell is the pane's foreground job only while it waits at its prompt; a
-# pane running an editor, tests or the command that called this is busy
+# pane running an editor, tests or the command that called this is busy, and
+# so is one whose process ids herdr doesn't know
 pane_at_prompt() {
     local pane_id="$1"
 
     herdr pane process-info --pane "$pane_id" |
-        jq -e '.result.process_info | .foreground_process_group_id == .shell_pid' > /dev/null
+        jq -e '.result.process_info | .shell_pid != null and .foreground_process_group_id == .shell_pid' > /dev/null
+}
+
+# A new tab's shell reaches its prompt only after it starts, and `herdr agent
+# start` needs it there
+wait_for_prompt() {
+    local pane_id="$1"
+    local label="$2"
+    local attempt
+
+    for ((attempt = 0; attempt < PROMPT_WAIT_ATTEMPTS; attempt++)); do
+        pane_at_prompt "$pane_id" && return
+        sleep "$PROMPT_WAIT_SECONDS"
+    done
+    error "The shell in new tab $label never reached its prompt; start Claude there yourself"
 }
 
 # `herdr agent start` needs a pane at its shell prompt: one with no agent whose
@@ -127,8 +157,11 @@ start_claude_in_free_pane() {
     local tab_id="$1"
     local label="$2"
     shift 2
-    local pane_ids pane_id
-    mapfile -t pane_ids < <(tab_panes_running "$tab_id" "")
+    local free_panes pane_id
+    local pane_ids=()
+    free_panes=$(tab_panes_running "$tab_id" "") ||
+        error "Could not list the panes in tab $label"
+    [[ -z "$free_panes" ]] || mapfile -t pane_ids <<< "$free_panes"
 
     for pane_id in "${pane_ids[@]}"; do
         if pane_at_prompt "$pane_id"; then
