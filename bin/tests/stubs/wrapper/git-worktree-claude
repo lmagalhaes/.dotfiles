@@ -1,0 +1,5 @@
+#!/usr/bin/env bash
+# Fake git-worktree-claude for the git() wrapper tests: records where it ran
+# and its arguments, one per line, in $CLAUDE_STUB_LOG.pwd and .args
+pwd > "$CLAUDE_STUB_LOG.pwd"
+printf '%s\n' "$@" > "$CLAUDE_STUB_LOG.args"

@@ -12,21 +12,8 @@ SCRIPT="$BIN_DIR/git-worktree-claude"
 setup() {
   setup_repo_with_worktrees
   stub_fzf
-  _stub_claude
+  stub_claude
   cd "$REPO"
-}
-
-# Fake claude records where it started, its arguments (one per line) and the
-# GIT_DIR it inherited
-_stub_claude() {
-  export CLAUDE_STUB_LOG="$TEST_ROOT/claude"
-  cat > "$TEST_ROOT/stubs/claude" <<'STUB'
-#!/usr/bin/env bash
-pwd > "$CLAUDE_STUB_LOG.pwd"
-printf '%s\n' "$@" > "$CLAUDE_STUB_LOG.args"
-echo "${GIT_DIR-unset}" > "$CLAUDE_STUB_LOG.git-dir"
-STUB
-  chmod +x "$TEST_ROOT/stubs/claude"
 }
 
 _claude_pwd() { cat "$CLAUDE_STUB_LOG.pwd"; }

@@ -1,0 +1,6 @@
+#!/usr/bin/env bash
+# Fake picker for the git() wrapper tests: prints $WORKTREES_DIR/<query>;
+# PICKER_STUB_CANCEL=1 simulates Esc
+[[ "${1:-}" == "--help" ]] && { echo "Usage: git worktree-use [query]"; exit 0; }
+[[ -n "${PICKER_STUB_CANCEL:-}" ]] && exit 130
+echo "$WORKTREES_DIR/${1:-main}"

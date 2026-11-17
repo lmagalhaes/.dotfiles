@@ -1,0 +1,5 @@
+#!/usr/bin/env bash
+# Fake git-worktree-herdr for the git() wrapper tests: records its arguments
+# in $HERDR_STUB_ARGS; HERDR_STUB_FAIL=1 makes it fail
+printf '%s\n' "$*" > "$HERDR_STUB_ARGS"
+[[ -z "${HERDR_STUB_FAIL:-}" ]]

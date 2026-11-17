@@ -1,0 +1,3 @@
+#!/usr/bin/env bash
+# Fake git for the git() wrapper tests: records its arguments in $GIT_STUB_ARGS
+printf '%s\n' "$*" > "$GIT_STUB_ARGS"

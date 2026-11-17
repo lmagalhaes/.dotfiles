@@ -39,31 +39,11 @@ _commit_in() {
   git -C "$REPO/.worktrees/$1" commit -q --allow-empty -m "work in $1"
 }
 
-# Fake gh pr list: $GH_STUB_OUTPUT is the repo's PRs as JSON, newest first, as
-# GitHub orders them; applies --head, --limit and --jq like gh does.
-# GH_STUB_FAIL=1 makes it fail.
+# Fake gh pr list (stubs/gh) answering from $GH_STUB_OUTPUT, the repo's PRs as
+# JSON; no PRs until a test sets it
 _stub_gh() {
-  local stubs="$TEST_ROOT/stubs"
-  mkdir -p "$stubs"
   export GH_STUB_OUTPUT='[]'
-  cat > "$stubs/gh" <<'STUB'
-#!/usr/bin/env bash
-[[ -n "${GH_STUB_FAIL:-}" ]] && exit 1
-head="" limit=30 filter="."
-while (( $# )); do
-  case "$1" in
-    --head) head="$2" ;;
-    --limit) limit="$2" ;;
-    --jq) filter="$2" ;;
-  esac
-  shift
-done
-jq --arg head "$head" --argjson limit "$limit" \
-  '[.[] | select($head == "" or .headRefName == $head)][:$limit]' <<< "$GH_STUB_OUTPUT" |
-  jq -r "$filter"
-STUB
-  chmod +x "$stubs/gh"
-  PATH="$stubs:$PATH"
+  _use_stubs
 }
 
 # The text of a "<label>:" line listed under a worktree folder; "" names the

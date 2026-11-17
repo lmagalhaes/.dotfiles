@@ -1,0 +1,19 @@
+#!/usr/bin/env bash
+# Fake fzf: selects the first row whose label (field 1, what the picker shows)
+# contains --query, ignoring case, and records its input in $FZF_STUB_INPUT.
+# FZF_STUB_CANCEL=1 simulates Esc.
+query=""
+while (( $# )); do
+  [[ "$1" == "--query" ]] && query="$2"
+  shift
+done
+tee "$FZF_STUB_INPUT" > /dev/null
+[[ -n "${FZF_STUB_CANCEL:-}" ]] && exit 130
+shopt -s nocasematch
+while IFS=$'\t' read -r label rest; do
+  if [[ "$label" == *"$query"* ]]; then
+    printf '%s\t%s\n' "$label" "$rest"
+    exit 0
+  fi
+done < "$FZF_STUB_INPUT"
+exit 1

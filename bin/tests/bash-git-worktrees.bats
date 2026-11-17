@@ -5,6 +5,11 @@
 
 WRAPPER="$(cd "$(dirname "$BATS_TEST_FILENAME")/../../bash" && pwd)/bash_git_worktrees"
 
+# Fake git, picker, git-worktree-claude and git-worktree-herdr, committed
+# rather than written per test (see STUBS_DIR in test_helper.bash). Kept apart
+# from stubs/ so the fake git never shadows the real one in other tests.
+WRAPPER_STUBS_DIR="$(cd "$(dirname "$BATS_TEST_FILENAME")" && pwd)/stubs/wrapper"
+
 setup() {
   TEST_ROOT="$(cd "$BATS_TEST_TMPDIR" && pwd -P)"
   export WORKTREES_DIR="$TEST_ROOT/worktrees"
@@ -13,40 +18,9 @@ setup() {
   export HERDR_STUB_ARGS="$TEST_ROOT/herdr-args"
   unset HERDR_TAB_ID HERDR_WORKSPACE_ID HERDR_PANE_ID
   mkdir -p "$WORKTREES_DIR/prt-3038" "$TEST_ROOT/start"
-  _stub_commands
+  PATH="$WRAPPER_STUBS_DIR:$PATH"
   source "$WRAPPER"
   cd "$TEST_ROOT/start"
-}
-
-# Fake picker prints $WORKTREES_DIR/<query>; PICKER_STUB_CANCEL=1 simulates
-# Esc. Fake git records its arguments; fake git-worktree-claude records where
-# it ran and its arguments, one per line. Fake git-worktree-herdr records its
-# arguments; HERDR_STUB_FAIL=1 makes it fail.
-_stub_commands() {
-  local stubs="$TEST_ROOT/stubs"
-  mkdir -p "$stubs"
-  cat > "$stubs/git-worktree-use" <<'STUB'
-#!/usr/bin/env bash
-[[ "${1:-}" == "--help" ]] && { echo "Usage: git worktree-use [query]"; exit 0; }
-[[ -n "${PICKER_STUB_CANCEL:-}" ]] && exit 130
-echo "$WORKTREES_DIR/${1:-main}"
-STUB
-  cat > "$stubs/git" <<'STUB'
-#!/usr/bin/env bash
-printf '%s\n' "$*" > "$GIT_STUB_ARGS"
-STUB
-  cat > "$stubs/git-worktree-claude" <<'STUB'
-#!/usr/bin/env bash
-pwd > "$CLAUDE_STUB_LOG.pwd"
-printf '%s\n' "$@" > "$CLAUDE_STUB_LOG.args"
-STUB
-  cat > "$stubs/git-worktree-herdr" <<'STUB'
-#!/usr/bin/env bash
-printf '%s\n' "$*" > "$HERDR_STUB_ARGS"
-[[ -z "${HERDR_STUB_FAIL:-}" ]]
-STUB
-  chmod +x "$stubs/git-worktree-use" "$stubs/git" "$stubs/git-worktree-claude" "$stubs/git-worktree-herdr"
-  PATH="$stubs:$PATH"
 }
 
 @test "git wt-use changes into the picked worktree" {

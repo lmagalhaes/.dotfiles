@@ -12,17 +12,7 @@ SCRIPT="$BIN_DIR/git-worktree-herdr"
 setup() {
   TEST_ROOT="$(cd "$BATS_TEST_TMPDIR" && pwd -P)"
   stub_herdr
-  _stub_claude
-}
-
-# Fake claude records the arguments it started with, one per line
-_stub_claude() {
-  export CLAUDE_STUB_ARGS="$TEST_ROOT/claude-args"
-  cat > "$TEST_ROOT/stubs/claude" <<'STUB'
-#!/usr/bin/env bash
-printf '%s\n' "$@" > "$CLAUDE_STUB_ARGS"
-STUB
-  chmod +x "$TEST_ROOT/stubs/claude"
+  stub_claude
 }
 
 _tab_labelled_prt_3038() {
@@ -105,14 +95,14 @@ _current_tab_labelled_prt_3038() {
   _current_tab_labelled_prt_3038
   HERDR_STUB_PANES='[{"pane_id":"w1:p1","tab_id":"w1:t1"}]'
   run --separate-stderr "$SCRIPT" open-claude /work/prt-3038 prt-3038 /task-context:load
-  [ "$(cat "$CLAUDE_STUB_ARGS")" = "/task-context:load" ]
+  [ "$(cat "$CLAUDE_STUB_LOG.args")" = "/task-context:load" ]
 }
 
 @test "open-claude starts no second claude in the current tab" {
   _current_tab_labelled_prt_3038
   HERDR_STUB_PANES='[{"pane_id":"w1:p1","tab_id":"w1:t1"},{"pane_id":"w1:p2","tab_id":"w1:t1","agent":"claude"}]'
   run --separate-stderr "$SCRIPT" open-claude /work/prt-3038 prt-3038
-  [ ! -e "$CLAUDE_STUB_ARGS" ]
+  [ ! -e "$CLAUDE_STUB_LOG.args" ]
 }
 
 @test "open-claude fails when every pane in the tab runs an agent" {

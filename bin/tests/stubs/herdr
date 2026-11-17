@@ -1,0 +1,18 @@
+#!/usr/bin/env bash
+# Fake herdr: records each call, one per line, in $HERDR_STUB_LOG and answers
+# `tab list` and `pane list` from the JSON arrays in $HERDR_STUB_TABS and
+# $HERDR_STUB_PANES. A created tab is w1:t9, with pane w1:p9. Every pane's
+# shell is at its prompt, except the panes listed in $HERDR_STUB_BUSY_PANES
+# (space-separated).
+echo "$*" >> "$HERDR_STUB_LOG"
+case "$1 $2" in
+  "tab list") echo "{\"result\":{\"tabs\":$HERDR_STUB_TABS}}" ;;
+  "pane list") echo "{\"result\":{\"panes\":$HERDR_STUB_PANES}}" ;;
+  "tab create") echo '{"result":{"tab":{"tab_id":"w1:t9"},"root_pane":{"pane_id":"w1:p9"}}}' ;;
+  "pane process-info")
+    foreground_group=1
+    [[ " ${HERDR_STUB_BUSY_PANES:-} " == *" $4 "* ]] && foreground_group=2
+    echo "{\"result\":{\"process_info\":{\"foreground_process_group_id\":$foreground_group,\"shell_pid\":1}}}"
+    ;;
+  *) echo '{"result":{}}' ;;
+esac

@@ -1,0 +1,6 @@
+#!/usr/bin/env bash
+# Fake claude: records where it started, its arguments (one per line) and the
+# GIT_DIR it inherited, in $CLAUDE_STUB_LOG.pwd, .args and .git-dir
+pwd > "$CLAUDE_STUB_LOG.pwd"
+printf '%s\n' "$@" > "$CLAUDE_STUB_LOG.args"
+echo "${GIT_DIR-unset}" > "$CLAUDE_STUB_LOG.git-dir"
