@@ -1,0 +1,95 @@
+#!/usr/bin/env bash
+#
+# Install the dotfiles dnsmasq config and point macOS at it:
+#   - stow dnsmasq/ into Homebrew's dnsmasq.d drop-in directory
+#   - write /etc/resolver/<domain> for each address=/<domain>/ line, and
+#     remove the ones it wrote for domains no longer configured
+#   - check the config, then restart the root service
+#
+# dnsmasq runs as root (sudo brew services) because it binds port 53, so
+# writing resolvers and restarting it ask for sudo. Safe to re-run.
+#
+set -euo pipefail
+
+DOTFILES="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+readonly DOTFILES
+readonly PACKAGE="dnsmasq"
+readonly RESOLVER_DIR="${RESOLVER_DIR:-/etc/resolver}"
+# Marks the resolvers this script owns: other tools write their own there
+readonly MANAGED_MARKER="# Managed by ~/.dotfiles/bin/setup-dnsmasq"
+readonly RESOLVER_CONTENT="$MANAGED_MARKER
+nameserver 127.0.0.1"
+
+handle_error() { echo "ERROR: Failed at line $1" >&2; exit 1; }
+trap 'handle_error $LINENO' ERR
+
+link_configs() {
+  local conf_dir="$1"
+  echo "Linking $PACKAGE/*.conf into $conf_dir"
+  stow -R --dir "$DOTFILES" --target "$conf_dir" "$PACKAGE"
+}
+
+# stow leaves the link of a deleted file behind, and dnsmasq fails to start
+# on a config it cannot read
+remove_broken_links() {
+  local conf_dir="$1"
+  find -L "$conf_dir" -maxdepth 1 -type l -name '*.conf' -print -exec rm {} +
+}
+
+local_domains() {
+  sed -n 's|^address=/\([^/]*\)/.*|\1|p' "$DOTFILES/$PACKAGE"/*.conf | sort -u
+}
+
+write_resolver() {
+  local domain="$1"
+  local resolver="$RESOLVER_DIR/$domain"
+  if [[ "$(cat "$resolver" 2>/dev/null)" == "$RESOLVER_CONTENT" ]]; then
+    return
+  fi
+  echo "Writing $resolver (sudo)"
+  sudo mkdir -p "$RESOLVER_DIR"
+  echo "$RESOLVER_CONTENT" | sudo tee "$resolver" > /dev/null
+}
+
+# A resolver left for a deleted config makes macOS send that domain to
+# dnsmasq, which refuses it instead of letting the internet answer
+remove_stale_resolvers() {
+  local domains="$1"
+  local resolver
+  for resolver in "$RESOLVER_DIR"/*; do
+    [[ -f "$resolver" ]] || continue
+    [[ "$(head -1 "$resolver")" == "$MANAGED_MARKER" ]] || continue
+    grep -qxF "$(basename "$resolver")" <<< "$domains" && continue
+    echo "Removing $resolver (sudo)"
+    sudo rm "$resolver"
+  done
+}
+
+check_config() {
+  local brew_prefix="$1" conf_dir="$2"
+  echo "Checking dnsmasq config"
+  dnsmasq --test -C "$brew_prefix/etc/dnsmasq.conf" -7 "$conf_dir,*.conf"
+}
+
+restart_service() {
+  echo "Restarting dnsmasq (sudo)"
+  sudo brew services restart dnsmasq
+}
+
+main() {
+  local brew_prefix="${BREW_PREFIX:-$(brew --prefix)}"
+  local conf_dir="$brew_prefix/etc/dnsmasq.d"
+
+  link_configs "$conf_dir"
+  remove_broken_links "$conf_dir"
+  local domains domain
+  domains="$(local_domains)"
+  while read -r domain; do
+    write_resolver "$domain"
+  done <<< "$domains"
+  remove_stale_resolvers "$domains"
+  check_config "$brew_prefix" "$conf_dir"
+  restart_service
+}
+
+main "$@"

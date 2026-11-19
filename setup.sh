@@ -132,6 +132,15 @@ else
   echo "  Warning: rtk directory not found, skipping"
 fi
 
+# dnsmasq — stows into Homebrew's dnsmasq.d and writes /etc/resolver files (sudo)
+if command -v dnsmasq &> /dev/null; then
+  echo ""
+  echo "Setting up dnsmasq..."
+  bash "$DOTFILES/bin/setup-dnsmasq"
+else
+  echo "  Warning: dnsmasq not installed — run brew bundle, then bin/setup-dnsmasq"
+fi
+
 echo ""
 echo "✓ Done! Dotfiles installed with stow."
 echo ""

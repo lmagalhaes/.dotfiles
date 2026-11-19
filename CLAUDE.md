@@ -80,6 +80,19 @@ Dotfiles now own the installer layer for Claude Code. `setup.sh` calls:
 
 The authored source lives in `~/.assistant-config/claude/`. It holds rules, skills, hooks, tooling, docs, design notes, and `settings.managed.json`. A new file added under `rules/` or `skills/` appears live in `~/.claude/` immediately without re-running setup.
 
+### dnsmasq/ (stowed into Homebrew's dnsmasq.d)
+
+Resolves local dev domains (`*.workyard.test`, `*.magamaker.test`, ...) to
+loopback. `bin/setup-dnsmasq` stows the package into `$(brew --prefix)/etc/dnsmasq.d`,
+writes `/etc/resolver/<domain>` for each `address=/<domain>/` line, checks the
+config and restarts the service. dnsmasq runs as root (`sudo brew services`)
+because it binds port 53. Shared options live only in `base.conf`: dnsmasq
+refuses to start when a keyword like `cache-size` is repeated. To add a domain,
+add a `dnsmasq/<project>.conf` with only its `address=` lines and re-run
+`bin/setup-dnsmasq`. To drop one, delete its file and re-run: the script removes
+its link and the `/etc/resolver` file it wrote, marked `# Managed by ...`.
+It leaves unmarked resolver files alone, since other tools write those.
+
 ### macos/
 
 - `defaults.sh` — applies macOS system defaults (Finder, trackpad, etc.)

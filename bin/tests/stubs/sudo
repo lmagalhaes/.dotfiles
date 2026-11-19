@@ -1,0 +1,5 @@
+#!/usr/bin/env bash
+# Fake sudo: records the call in $COMMAND_STUB_LOG, then runs the command as
+# the current user
+echo "sudo $*" >> "$COMMAND_STUB_LOG"
+exec "$@"

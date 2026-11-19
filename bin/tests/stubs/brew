@@ -1,0 +1,3 @@
+#!/usr/bin/env bash
+# Fake brew: records the call in $COMMAND_STUB_LOG
+echo "brew $*" >> "$COMMAND_STUB_LOG"

@@ -1,0 +1,8 @@
+#!/usr/bin/env bash
+# Fake dnsmasq: records the call in $COMMAND_STUB_LOG, and fails like an
+# invalid config when $DNSMASQ_STUB_FAILING is set
+echo "dnsmasq $*" >> "$COMMAND_STUB_LOG"
+if [[ -n "${DNSMASQ_STUB_FAILING:-}" ]]; then
+  echo "dnsmasq: illegal repeated keyword" >&2
+  exit 1
+fi
